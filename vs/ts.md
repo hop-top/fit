@@ -134,7 +134,8 @@ app.use(express.json());
 
 app.post("/ask", async (req, res) => {
   const { prompt, context } = req.body;
-  const result = await session.run(prompt, context);
+  const raw = await session.run(prompt, context);
+  const result = Array.isArray(raw) ? raw[0] : raw;
   res.json({ output: result.output, reward: result.reward });
 });
 
