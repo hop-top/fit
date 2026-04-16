@@ -86,7 +86,7 @@ export class Session {
     prompt: string,
     context: Record<string, unknown>,
   ): Promise<SessionResult> {
-    this.state = SessionState.Init;
+    // First step: Init -> Advise. Subsequent steps: Trace -> Advise.
     this.transition(SessionState.Advise);
 
     const input = { prompt, context };
@@ -160,7 +160,7 @@ export class Session {
     context: Record<string, unknown>,
   ): Promise<SessionResult> {
     const result = await this.runStep(sessionId, prompt, context);
-    this.state = SessionState.Done;
+    this.transition(SessionState.Done);
     return { ...result, state: this.state };
   }
 
@@ -180,7 +180,7 @@ export class Session {
       }
     }
 
-    this.state = SessionState.Done;
+    this.transition(SessionState.Done);
     return results;
   }
 }

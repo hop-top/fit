@@ -30,11 +30,11 @@ use fit::{
 async fn main() -> Result<(), fit::FitError> {
     let advisor = RemoteAdvisor::from_endpoint("http://localhost:8080");
     let adapter = AnthropicAdapter::new(&std::env::var("ANTHROPIC_API_KEY").unwrap());
-    let scorer = CompositeScorer::from_dimensions(&["accuracy", "relevance", "safety"]);
+    let scorer = CompositeScorer::from_dimensions(&["accuracy", "relevance", "safety"])?;
 
-    let context_map: HashMap<&str, &str> = HashMap::from([
-        ("jurisdiction", "US"),
-        ("filing_status", "single"),
+    let context_map: HashMap<String, serde_yaml::Value> = HashMap::from([
+        ("jurisdiction".into(), serde_yaml::Value::String("US".into())),
+        ("filing_status".into(), serde_yaml::Value::String("single".into())),
     ]);
 
     let session = Session::new(advisor, adapter, scorer);
@@ -178,7 +178,7 @@ async fn handle_ask(
     State(session): State<Session<...>>,
     Json(req): Json<AskRequest>,
 ) -> Json<serde_json::Value> {
-    let result = session.run(&req.prompt, &req.context).await.unwrap();
+    let result = session.run(&req.prompt, req.context).await.unwrap();
     Json(serde_json::json!({
         "output": result.output,
         "reward": { "score": result.reward.score }

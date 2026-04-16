@@ -41,6 +41,7 @@ class RemoteAdvisor(Advisor):
             confidence=data["confidence"],
             constraints=data.get("constraints", []),
             metadata=data.get("metadata", {}),
+            version=data.get("version", "1.0"),
         )
 
     def model_id(self) -> str:

@@ -219,4 +219,38 @@ describe("Session regressions", () => {
       /invalid state transition/,
     );
   });
+
+  it("multi-turn follows Trace -> Advise (not Trace -> Init)", async () => {
+    const advisor = new StubAdvisor(baseAdvice);
+    const adapter = new StubAdapter("out");
+    const scorer = new SequentialScorer([0.3, 0.9]);
+
+    const session = new Session(advisor, adapter, scorer, {
+      mode: "multi-turn",
+      maxSteps: 5,
+      rewardThreshold: 0.8,
+    });
+
+    // Run multi-turn — the internal state machine should never
+    // reset to Init between steps. If it did, Trace -> Init would
+    // be an invalid transition and throw.
+    const results = await session.run("prompt");
+    const steps = results as Array<{ reward: Reward }>;
+    expect(steps).toHaveLength(2);
+    expect(session.getState()).toBe(SessionState.Done);
+  });
+
+  it("one-shot transitions Trace -> Done via transition()", async () => {
+    const advisor = new StubAdvisor(baseAdvice);
+    const adapter = new StubAdapter("out");
+    const scorer = new ConstantScorer(0.5);
+
+    const session = new Session(advisor, adapter, scorer, {
+      mode: "one-shot",
+    });
+
+    const result = await session.run("prompt");
+    expect((result as { state: string }).state).toBe(SessionState.Done);
+    expect(session.getState()).toBe(SessionState.Done);
+  });
 });

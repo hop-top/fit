@@ -2,6 +2,7 @@ package fit
 
 import (
 	"encoding/json"
+	"math"
 	"os"
 	"path/filepath"
 	"testing"
@@ -71,7 +72,7 @@ func TestAdviceYAMLJSONEquivalence(t *testing.T) {
 	if yml.Domain != jsn.Domain {
 		t.Errorf("domain mismatch: yaml=%q json=%q", yml.Domain, jsn.Domain)
 	}
-	if yml.Confidence != jsn.Confidence {
+	if math.Abs(yml.Confidence-jsn.Confidence) > 1e-9 {
 		t.Errorf("confidence mismatch: yaml=%f json=%f", yml.Confidence, jsn.Confidence)
 	}
 }

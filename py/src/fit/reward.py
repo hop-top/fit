@@ -28,14 +28,24 @@ class CompositeScorer(RewardScorer):
             else [] if not scorers
             else [1.0 / len(scorers)] * len(scorers)
         )
+        if weights is not None and len(self._weights) != len(self._scorers):
+            raise ValueError(
+                f"weights/scorers length mismatch: "
+                f"{len(self._scorers)} scorers but "
+                f"{len(self._weights)} weights"
+            )
 
     def score(self, output: str, context: dict[str, Any]) -> Reward:
         rewards = [s.score(output, context) for s in self._scorers]
         total_weight = sum(self._weights)
         combined = sum(r.score * w for r, w in zip(rewards, self._weights))
+        # Merge breakdowns from all scorers (not just the first one).
+        merged_breakdown: dict[str, float] = {}
+        for r in rewards:
+            merged_breakdown.update(r.breakdown)
         return Reward(
             score=combined / total_weight if total_weight else 0.0,
-            breakdown=rewards[0].breakdown if rewards else {},
+            breakdown=merged_breakdown,
             metadata={"scorers": len(rewards)},
         )
 

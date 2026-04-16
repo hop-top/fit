@@ -64,7 +64,7 @@ func (s *Session) Run(ctx context.Context, prompt string, contextMap map[string]
 	// Advise
 	advice, err := s.Advisor.GenerateAdvice(ctx, input)
 	if err != nil {
-		advice = &Advice{Domain: "unknown", SteeringText: "", Confidence: 0}
+		advice = &Advice{Version: "1.0", Domain: "unknown", SteeringText: "", Confidence: 0, Metadata: map[string]any{}}
 	}
 
 	// Frontier

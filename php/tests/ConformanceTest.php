@@ -48,6 +48,7 @@ class ConformanceTest extends TestCase
         // For actual YAML files we'd need ext-yaml or symfony/yaml
         // Our test primarily uses JSON fixtures for PHP
         $this->markTestSkipped('YAML extension not available');
+        return []; // static analyzers require explicit return
     }
 
     // --- Advice conformance ---

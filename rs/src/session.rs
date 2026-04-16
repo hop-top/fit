@@ -127,6 +127,7 @@ where
     fn validate_transition(&self, to: &SessionState) -> Result<(), FitError> {
         let valid = match (&self.state, to) {
             (SessionState::Init, SessionState::Advise) => true,
+            (SessionState::Init, SessionState::Done) => true,
             (SessionState::Advise, SessionState::Frontier) => true,
             (SessionState::Frontier, SessionState::Score) => true,
             (SessionState::Score, SessionState::Trace) => true,
@@ -169,10 +170,9 @@ where
         context: HashMap<String, serde_yaml::Value>,
         session_id: &str,
     ) -> Result<SessionResult, FitError> {
-        // Reset state so run() can be called multiple times (e.g. from run_multi_turn)
-        self.state = SessionState::Init;
-
-        // Init -> Advise
+        // Drive state via transition(). For first call state is Init; for
+        // subsequent multi-turn calls state is Trace. Both cases transition
+        // directly to Advise (Trace->Advise and Init->Advise are both valid).
         self.transition(SessionState::Advise)?;
 
         // Build input map: { prompt: "...", context: { ... } }
@@ -263,12 +263,14 @@ where
         let session_id = uuid::Uuid::new_v4().to_string();
         self.step = 0;
         self.traces.clear();
+        // Reset to Init via direct assignment (no prior state to transition from).
+        // All subsequent state changes use transition().
         self.state = SessionState::Init;
         let mut results = vec![];
         let mut current_prompt = prompt.to_string();
 
         if self.config.max_steps == 0 {
-            self.state = SessionState::Done;
+            self.transition(SessionState::Done)?;
             return Ok(vec![]);
         }
 
@@ -292,8 +294,9 @@ where
             }
         }
 
-        // Transition to Done after multi-turn loop completes
-        self.state = SessionState::Done;
+        // Transition to Done after multi-turn loop completes.
+        // State is Trace after the last run_with_session_id call.
+        self.transition(SessionState::Done)?;
 
         Ok(results)
     }
