@@ -15,6 +15,8 @@ func (s *stubAdvisor) GenerateAdvice(_ context.Context, _ map[string]any) (*Advi
 	return s.advice, nil
 }
 
+func (s *stubAdvisor) ModelID() string { return "stub-advisor" }
+
 type stubAdapter struct {
 	output string
 }
@@ -100,4 +102,39 @@ func TestFallbackAdviceFieldsComplete(t *testing.T) {
 	if a.SteeringText != "" {
 		t.Errorf("steering_text = %q, want empty", a.SteeringText)
 	}
+}
+
+// PR#6 Item 6 regression: nil contextMap must not panic
+// A scorer that writes to contextMap would panic on nil map.
+func TestNilContextMapNoPanic(t *testing.T) {
+	writingScorer := &contextWritingScorer{}
+	session := &Session{
+		Advisor: &stubAdvisor{advice: &Advice{Domain: "test", Version: "1.0"}},
+		Adapter: &stubAdapter{output: "out"},
+		Scorer:  writingScorer,
+		Config:  SessionConfig{Mode: "one-shot"},
+	}
+
+	result, err := session.Run(context.Background(), "test", nil)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result == nil {
+		t.Fatal("result is nil")
+	}
+	// Verify the scorer received a non-nil map it could write to
+	if !writingScorer.receivedContext {
+		t.Error("scorer did not receive context")
+	}
+}
+
+// contextWritingScorer writes to the context map to prove nil guard works.
+type contextWritingScorer struct {
+	receivedContext bool
+}
+
+func (c *contextWritingScorer) Score(_ string, ctx map[string]any) (*Reward, error) {
+	c.receivedContext = true
+	ctx["_written"] = true // would panic if ctx is nil
+	return &Reward{Score: 0.5, Breakdown: map[string]float64{}}, nil
 }

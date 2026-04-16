@@ -95,7 +95,14 @@ export class Session {
     try {
       advice = await this.advisor.generateAdvice(input);
     } catch {
-      advice = { domain: "unknown", steering_text: "", confidence: 0 };
+      advice = {
+        domain: "unknown",
+        steering_text: "",
+        confidence: 0,
+        version: "1.0",
+        constraints: [],
+        metadata: {},
+      };
     }
 
     this.transition(SessionState.Frontier);

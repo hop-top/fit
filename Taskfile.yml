@@ -8,6 +8,104 @@ vars:
   PHP_DIR: php
 
 tasks:
+  # --- Aggregates ---
+
+  default:
+    desc: Install + build + lint + test (full gate)
+    cmds:
+      - task: install
+      - task: build
+      - task: check
+
+  check:
+    desc: Lint + test all ports
+    cmds:
+      - task: lint
+      - task: test
+
+  # --- Install ---
+
+  install:
+    desc: Install dependencies for all ports
+    cmds:
+      - task: install:go
+      - task: install:ts
+      - task: install:py
+      - task: install:rs
+      - task: install:php
+
+  install:go:
+    desc: Go module download
+    dir: "{{.GO_DIR}}"
+    cmds:
+      - go mod download
+
+  install:ts:
+    desc: TypeScript npm install
+    dir: "{{.TS_DIR}}"
+    cmds:
+      - npm ci || npm install
+
+  install:py:
+    desc: Python dev deps (editable install)
+    dir: "{{.PY_DIR}}"
+    cmds:
+      - python -m pip install -e ".[dev]" --quiet 2>/dev/null
+        || pip install -e ".[dev]" --quiet 2>/dev/null
+        || true
+    status:
+      - python -c "import fit" 2>/dev/null
+
+  install:rs:
+    desc: Rust cargo fetch
+    dir: "{{.RS_DIR}}"
+    cmds:
+      - cargo fetch
+
+  install:php:
+    desc: PHP composer install
+    dir: "{{.PHP_DIR}}"
+    cmds:
+      - composer install --no-interaction --quiet
+    sources:
+      - composer.json
+      - composer.lock
+    generates:
+      - vendor/autoload.php
+
+  # --- Build ---
+
+  build:
+    desc: Build all ports that need compilation
+    cmds:
+      - task: build:ts
+      - task: build:rs
+      - task: build:go
+
+  build:ts:
+    desc: TypeScript compile
+    dir: "{{.TS_DIR}}"
+    cmds:
+      - npx tsc
+    sources:
+      - src/**/*.ts
+    generates:
+      - dist/index.js
+
+  build:rs:
+    desc: Rust cargo build
+    dir: "{{.RS_DIR}}"
+    cmds:
+      - cargo build
+
+  build:go:
+    desc: Go build CLI binary
+    dir: "{{.GO_DIR}}"
+    cmds:
+      - go build ./...
+
+  # --- Test ---
+
   test:
     desc: Run tests for all ports
     cmds:
@@ -20,6 +118,8 @@ tasks:
   test:py:
     desc: Python tests
     dir: "{{.PY_DIR}}"
+    env:
+      PYTHONPATH: src
     cmds:
       - python -m pytest tests/ -x -q
 
@@ -46,6 +146,8 @@ tasks:
     dir: "{{.PHP_DIR}}"
     cmds:
       - vendor/bin/phpunit --no-coverage
+
+  # --- Lint ---
 
   lint:
     desc: Lint all ports
@@ -80,9 +182,3 @@ tasks:
     dir: "{{.PHP_DIR}}"
     cmds:
       - vendor/bin/phpstan analyse src/
-
-  check:
-    desc: Lint + test all ports
-    cmds:
-      - task: lint
-      - task: test

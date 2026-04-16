@@ -106,9 +106,12 @@ def test_version_with_numeric_value():
     with patch.dict("sys.modules", {"httpx": mock_httpx}):
         advice = advisor.generate_advice({"prompt": "write a function"})
 
-    # version from server should be preserved as-is (int 3, not string)
-    assert advice.version == 3, (
-        f"version should be 3 from server, got '{advice.version}'"
+    # version from server must be coerced to str for type conformance
+    assert advice.version == "3", (
+        f"version should be '3' (str), got '{advice.version}'"
+    )
+    assert isinstance(advice.version, str), (
+        f"version must be str, got {type(advice.version).__name__}"
     )
 
 

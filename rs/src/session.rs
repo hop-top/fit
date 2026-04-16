@@ -153,7 +153,11 @@ where
         Ok(())
     }
 
-    /// Run a one-shot session: Init -> Advise -> Frontier -> Score -> Trace -> Done
+    /// Run a one-shot session: Init -> Advise -> Frontier -> Score -> Trace
+    ///
+    /// Note: Done is NOT reached by this method. The session ends in Trace
+    /// state. Use `run_multi_turn` for automatic Done transition, or
+    /// transition to Done externally after inspecting the result.
     pub async fn run(
         &mut self,
         prompt: &str,

@@ -19,13 +19,7 @@ class ConformanceTest extends TestCase
     private function loadYaml(string $name): array
     {
         $path = self::fixturesDir() . '/' . $name;
-        $content = file_get_contents($path);
-        // Simple YAML parser for our fixture format
-        // Since PHP doesn't ship with YAML by default, parse via
-        //Symfony YAML or manually for these simple structures.
-        // For conformance tests, use the JSON equivalent where available.
-        return (function_exists('yaml_parse') && yaml_parse($content))
-            ?: $this->simpleYamlParse($content);
+        return \Symfony\Component\Yaml\Yaml::parseFile($path);
     }
 
     private static function loadJson(string $name): array
@@ -34,24 +28,18 @@ class ConformanceTest extends TestCase
         return json_decode(file_get_contents($path), true, 512, JSON_THROW_ON_ERROR);
     }
 
-    /**
-     * Minimal YAML-like parser for our fixture structures.
-     * Handles top-level key: value, nested maps, and simple lists.
-     */
-    private function simpleYamlParse(string $content): array
-    {
-        // Fall back to json if it parses
-        $decoded = json_decode($content, true);
-        if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
-            return $decoded;
-        }
-        // For actual YAML files we'd need ext-yaml or symfony/yaml
-        // Our test primarily uses JSON fixtures for PHP
-        $this->markTestSkipped('YAML extension not available');
-        return []; // static analyzers require explicit return
-    }
-
     // --- Advice conformance ---
+
+    // PR#6 Item 4 regression: loadYaml must parse YAML via symfony/yaml
+    public function testLoadYamlParsesAdviceFixture(): void
+    {
+        $data = $this->loadYaml('advice-v1.yaml');
+        $this->assertIsArray($data);
+        $this->assertSame('tax-compliance', $data['domain']);
+        $this->assertEqualsWithDelta(0.87, $data['confidence'], 0.001);
+        $this->assertCount(3, $data['constraints']);
+        $this->assertSame('1.0', $data['version']);
+    }
 
     public function testAdviceParseJson(): void
     {
@@ -149,35 +137,27 @@ class ConformanceTest extends TestCase
 
     public function testTraceFromFixtureData(): void
     {
-        $adviceData = self::loadJson('advice-v1.json');
-        $rewardData = self::loadJson('reward-v1.json');
+        $data = $this->loadYaml('trace-v1.yaml');
         $a = new Advice(
-            domain: 'tax-compliance',
-            steeringText: 'Cite IRS publication numbers.',
-            confidence: 0.91,
-            constraints: ['cite sources', 'no speculation'],
+            domain: $data['advice']['domain'],
+            steeringText: $data['advice']['steering_text'],
+            confidence: $data['advice']['confidence'],
+            constraints: $data['advice']['constraints'],
+            metadata: $data['advice']['metadata'] ?? [],
         );
         $r = new Reward(
-            score: 0.95,
-            breakdown: ['accuracy' => 1.0, 'relevance' => 0.9, 'safety' => 1.0, 'efficiency' => 0.9],
+            score: $data['reward']['score'],
+            breakdown: $data['reward']['breakdown'],
         );
         $t = new Trace(
-            id: '550e8400-e29b-41d4-a716-446655440000',
-            sessionId: 'sess_abc123',
-            timestamp: '2026-04-15T10:30:00Z',
-            input: [
-                'prompt' => 'What is the standard deduction for 2025?',
-                'context' => ['jurisdiction' => 'US', 'filing_status' => 'single'],
-            ],
+            id: $data['id'],
+            sessionId: $data['session_id'],
+            timestamp: $data['timestamp'],
+            input: $data['input'],
             advice: $a,
-            frontier: [
-                'model' => 'claude-sonnet-4-6',
-                'provider' => 'anthropic',
-                'output' => 'For tax year 2025...',
-                'usage' => ['prompt_tokens' => 342, 'completion_tokens' => 156, 'total_tokens' => 498],
-            ],
+            frontier: $data['frontier'],
             reward: $r,
-            metadata: ['duration_ms' => 1830, 'trace_version' => '1.0'],
+            metadata: $data['metadata'] ?? [],
         );
         $this->assertSame('550e8400-e29b-41d4-a716-446655440000', $t->id);
         $this->assertSame('sess_abc123', $t->sessionId);

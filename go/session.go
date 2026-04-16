@@ -55,6 +55,9 @@ func NewSession(advisor Advisor, adapter Adapter, scorer RewardScorer) *Session 
 
 // Run executes a one-shot session cycle.
 func (s *Session) Run(ctx context.Context, prompt string, contextMap map[string]any) (*SessionResult, error) {
+	if contextMap == nil {
+		contextMap = make(map[string]any)
+	}
 	sessionID := uuid.New().String()
 	input := map[string]any{
 		"prompt":  prompt,

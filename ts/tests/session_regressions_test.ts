@@ -20,6 +20,18 @@ class StubAdvisor implements Advisor {
   }
 }
 
+class ThrowingAdvisor implements Advisor {
+  async generateAdvice(
+    _context: Record<string, unknown>,
+  ): Promise<Advice> {
+    throw new Error("advisor unavailable");
+  }
+
+  modelId(): string {
+    return "throwing";
+  }
+}
+
 class StubAdapter implements Adapter {
   constructor(private output: string) {}
 
@@ -252,5 +264,29 @@ describe("Session regressions", () => {
     const result = await session.run("prompt");
     expect((result as { state: string }).state).toBe(SessionState.Done);
     expect(session.getState()).toBe(SessionState.Done);
+  });
+
+  it("fallback advice has all fields when advisor throws", async () => {
+    // Regression: catch block omitted version, constraints, metadata
+    const advisor = new ThrowingAdvisor();
+    const adapter = new StubAdapter("out");
+    const scorer = new ConstantScorer(0.5);
+
+    const session = new Session(advisor, adapter, scorer, {
+      mode: "one-shot",
+    });
+
+    const result = await session.run("prompt");
+    const r = result as {
+      trace: { advice: Advice };
+    };
+
+    const advice = r.trace.advice;
+    expect(advice.domain).toBe("unknown");
+    expect(advice.steering_text).toBe("");
+    expect(advice.confidence).toBe(0);
+    expect(advice.version).toBe("1.0");
+    expect(advice.constraints).toEqual([]);
+    expect(advice.metadata).toEqual({});
   });
 });
