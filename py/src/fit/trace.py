@@ -18,7 +18,7 @@ class TraceWriter:
         session_dir = self._dir / trace.session_id
         session_dir.mkdir(parents=True, exist_ok=True)
         path = session_dir / f"step-{step:03d}.yaml"
-        path.write_text(yaml.safe_dump(_trace_to_dict(trace), default_flow_style=False, sort_keys=False))
+        path.write_text(yaml.safe_dump(_trace_to_dict(trace), default_flow_style=False, sort_keys=False), encoding="utf-8")
         return path
 
 
@@ -35,7 +35,7 @@ class TraceReader:
 
     def read(self, session_id: str, step: int = 1) -> dict[str, Any]:
         path = self._dir / session_id / f"step-{step:03d}.yaml"
-        return yaml.safe_load(path.read_text())
+        return yaml.safe_load(path.read_text(encoding="utf-8"))
 
 
 def _trace_to_dict(trace: Trace) -> dict[str, Any]:

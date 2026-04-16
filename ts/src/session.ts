@@ -107,18 +107,31 @@ export class Session {
 
     this.transition(SessionState.Frontier);
 
-    const { output, meta: frontierMeta } = await this.adapter.call(
-      prompt,
-      advice,
-    );
+    let output: string;
+    let frontierMeta: Record<string, unknown>;
+    let frontierFailed = false;
+
+    try {
+      const result = await this.adapter.call(prompt, advice);
+      output = result.output;
+      frontierMeta = result.meta;
+    } catch (err) {
+      frontierFailed = true;
+      output = "";
+      frontierMeta = { error: err instanceof Error ? err.message : String(err) };
+    }
 
     this.transition(SessionState.Score);
 
     let reward: Reward;
-    try {
-      reward = await this.scorer.score(output, context);
-    } catch {
+    if (frontierFailed) {
       reward = { score: NaN, breakdown: {} };
+    } else {
+      try {
+        reward = await this.scorer.score(output, context);
+      } catch {
+        reward = { score: NaN, breakdown: {} };
+      }
     }
 
     this.transition(SessionState.Trace);

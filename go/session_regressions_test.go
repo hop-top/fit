@@ -2,6 +2,7 @@ package fit
 
 import (
 	"context"
+	"math"
 	"testing"
 )
 
@@ -138,3 +139,53 @@ func (c *contextWritingScorer) Score(_ string, ctx map[string]any) (*Reward, err
 	ctx["_written"] = true // would panic if ctx is nil
 	return &Reward{Score: 0.5, Breakdown: map[string]float64{}}, nil
 }
+
+// PR#11 regression: adapter failure must produce a partial trace, not nil.
+func TestAdapterFailureProducesPartialTrace(t *testing.T) {
+	session := &Session{
+		Advisor: &stubAdvisor{advice: &Advice{Domain: "test", Version: "1.0"}},
+		Adapter: &errorAdapter{},
+		Scorer:  &stubScorer{score: 0.5},
+		Config:  SessionConfig{Mode: "one-shot"},
+	}
+
+	result, err := session.Run(context.Background(), "test", nil)
+
+	// Adapter error must still be propagated.
+	if err == nil {
+		t.Fatal("expected non-nil error from adapter failure")
+	}
+
+	// Partial result must be returned (not nil).
+	if result == nil {
+		t.Fatal("result is nil, expected partial result with trace")
+	}
+
+	// Trace must be present.
+	if result.Trace == nil {
+		t.Fatal("result.Trace is nil, expected partial trace")
+	}
+
+	// Reward score must be NaN.
+	if !math.IsNaN(result.Reward.Score) {
+		t.Errorf("reward.Score = %v, want NaN", result.Reward.Score)
+	}
+
+	// Frontier must contain the error.
+	if result.Trace.Frontier == nil {
+		t.Fatal("trace.Frontier is nil, expected error info")
+	}
+	frontierErr, _ := result.Trace.Frontier["error"].(string)
+	if frontierErr == "" {
+		t.Error("trace.Frontier missing 'error' key")
+	}
+}
+
+// errorAdapter always returns an error from Call().
+type errorAdapter struct{}
+
+func (e *errorAdapter) Call(_ context.Context, _ string, _ *Advice) (string, map[string]any, error) {
+	return "", nil, errAdapterFailed
+}
+
+var errAdapterFailed = &simpleError{"adapter failed"}

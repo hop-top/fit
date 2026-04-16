@@ -45,13 +45,22 @@ class Session:
             advice = Advice(domain="unknown", steering_text="", confidence=0.0)
 
         # Frontier
-        output, frontier_meta = self._adapter.call(prompt, advice)
-
-        # Score
+        frontier_failed = False
         try:
-            reward = self._scorer.score(output, ctx)
-        except Exception:
+            output, frontier_meta = self._adapter.call(prompt, advice)
+        except Exception as exc:
+            frontier_failed = True
+            output = ""
+            frontier_meta = {"error": str(exc)}
+
+        # Score (skip when frontier failed — use NaN reward)
+        if frontier_failed:
             reward = Reward(score=float("nan"), breakdown={})
+        else:
+            try:
+                reward = self._scorer.score(output, ctx)
+            except Exception:
+                reward = Reward(score=float("nan"), breakdown={})
 
         trace = Trace(
             id=str(uuid.uuid4()),

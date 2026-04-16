@@ -22,8 +22,9 @@ export class TraceReader {
     try {
       const entries = await readdir(this.outputDir, { withFileTypes: true });
       return entries.filter((e) => e.isDirectory()).map((e) => e.name);
-    } catch {
-      return [];
+    } catch (err: any) {
+      if (err?.code === "ENOENT") return [];
+      throw err;
     }
   }
 

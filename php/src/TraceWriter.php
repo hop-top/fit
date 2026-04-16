@@ -16,13 +16,19 @@ class TraceWriter
     {
         $sessionDir = "{$this->outputDir}/{$trace->sessionId}";
         if (!is_dir($sessionDir)) {
-            mkdir($sessionDir, 0755, true);
+            $created = mkdir($sessionDir, 0755, true);
+            if (!$created && !is_dir($sessionDir)) {
+                throw new \RuntimeException("Failed to create directory: {$sessionDir}");
+            }
         }
         $path = "{$sessionDir}/step-" . str_pad((string) $step, 3, '0', STR_PAD_LEFT) . '.yaml';
-        file_put_contents(
+        $result = file_put_contents(
             $path,
             Yaml::dump($trace->toArray(), 2, 4, Yaml::DUMP_OBJECT_AS_MAP),
         );
+        if ($result === false) {
+            throw new \RuntimeException("Failed to write trace file: {$path}");
+        }
         return $path;
     }
 }

@@ -115,9 +115,21 @@ describe("yaml-stub unsafe schema rejection", () => {
     expect(result.ts).toBe("2025-04-14");
   });
 
-  it("keeps YAML merge keys and binary tags out", () => {
+  it("keeps binary tags out", () => {
     // JSON_SCHEMA rejects !!binary and other non-JSON YAML tags
     const doc = 'data: !!binary "aGVsbG8="\n';
     expect(() => load(doc)).toThrow();
+  });
+
+  // Note: JSON_SCHEMA does NOT reject merge keys (<<). They pass through
+  // as a regular key. This is documented here for clarity; merge keys
+  // are a DEFAULT_SCHEMA feature but JSON_SCHEMA does not error on them.
+  it("documents merge key behavior under JSON_SCHEMA", () => {
+    const doc = "default: &default\n  key: value\ncustom:\n  <<: *default\n  extra: data\n";
+    const result = load(doc) as Record<string, unknown>;
+    // Merge key passes through as a plain key (not resolved into merged object)
+    const custom = result.custom as Record<string, unknown>;
+    expect(custom).toHaveProperty("<<");
+    expect(custom).toHaveProperty("extra", "data");
   });
 });

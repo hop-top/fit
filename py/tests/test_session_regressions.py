@@ -3,10 +3,12 @@
 Includes:
 - Session context shape bug (flattened context dict)
 - Trace serialization dropping advice.version
+- Adapter failure producing no trace (PR#11)
 """
 
 from __future__ import annotations
 
+import math
 from typing import Any
 
 from fit.advisor import Advisor
@@ -123,3 +125,38 @@ def test_trace_to_dict_includes_advice_version():
         "advice dict missing 'version' key"
     )
     assert d["advice"]["version"] == "1.0"
+
+
+class ErrorAdapter:
+    """Adapter whose call() always raises RuntimeError."""
+
+    def call(self, prompt: str, advice: Advice) -> tuple[str, dict[str, Any]]:
+        raise RuntimeError("adapter failed")
+
+
+def test_adapter_failure_produces_partial_trace():
+    """Regression: adapter failure must produce a partial trace.
+
+    Before fix: session.run() propagated the exception with no trace.
+    Spec requires frontier failures to still produce a trace with
+    partial fields (NaN reward, frontier error info).
+    """
+    advisor = CaptureAdvisor()
+    adapter = ErrorAdapter()
+    scorer = FixedScorer()
+    session = Session(advisor=advisor, adapter=adapter, scorer=scorer)
+
+    output, reward, trace = session.run("test")
+
+    # Output should be empty string, not an exception
+    assert isinstance(output, str)
+
+    # Trace must be present
+    assert trace is not None
+
+    # Reward score must be NaN
+    assert math.isnan(reward.score)
+
+    # Frontier must contain the error
+    assert "error" in trace.frontier
+    assert "adapter failed" in trace.frontier["error"]
