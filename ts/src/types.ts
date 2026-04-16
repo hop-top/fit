@@ -10,7 +10,7 @@ export interface Advice {
 
 /** Reward scoring result (reward-schema-v1) */
 export interface Reward {
-  score: number;
+  score: number | null;
   breakdown: Record<string, number>;
   metadata?: Record<string, unknown>;
 }

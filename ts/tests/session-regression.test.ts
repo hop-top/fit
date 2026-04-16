@@ -40,7 +40,7 @@ const errorAdapter = {
 };
 
 describe("PR#11: adapter failure produces partial trace", () => {
-  it("returns partial result with NaN reward when adapter throws", async () => {
+  it("returns partial result with null score when adapter throws", async () => {
     const session = new Session(
       stubAdvisor,
       errorAdapter as any,
@@ -65,8 +65,12 @@ describe("PR#11: adapter failure produces partial trace", () => {
     expect(r.trace).toBeDefined();
     expect(r.trace.frontier).toBeDefined();
 
-    // Reward score must be NaN
-    expect(r.reward.score).toBeNaN();
+    // Reward score must be null (spec: reward-schema-v1 allows null for failures)
+    expect(r.reward.score).toBeNull();
+
+    // Metadata must contain error indicator
+    expect(r.reward.metadata).toBeDefined();
+    expect(r.reward.metadata!.error).toBe("frontier_failure");
 
     // Frontier must contain error info
     expect(r.trace.frontier.error).toContain("adapter failed");

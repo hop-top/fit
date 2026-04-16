@@ -125,12 +125,20 @@ export class Session {
 
     let reward: Reward;
     if (frontierFailed) {
-      reward = { score: NaN, breakdown: {} };
+      reward = {
+        score: null,
+        breakdown: {},
+        metadata: { error: "frontier_failure" },
+      };
     } else {
       try {
         reward = await this.scorer.score(output, context);
       } catch {
-        reward = { score: NaN, breakdown: {} };
+        reward = {
+          score: null,
+          breakdown: {},
+          metadata: { error: "scorer_failure" },
+        };
       }
     }
 
