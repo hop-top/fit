@@ -1,7 +1,9 @@
+import yaml from "js-yaml";
+
 export function dump(obj: unknown): string {
-  return JSON.stringify(obj, null, 2);
+  return yaml.dump(obj, { lineWidth: -1, noRefs: true });
 }
 
 export function load(text: string): unknown {
-  return JSON.parse(text);
+  return yaml.load(text);
 }
