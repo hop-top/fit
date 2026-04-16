@@ -50,9 +50,7 @@ tasks:
     desc: Python dev deps (editable install)
     dir: "{{.PY_DIR}}"
     cmds:
-      - python -m pip install -e ".[dev]" --quiet 2>/dev/null
-        || pip install -e ".[dev]" --quiet 2>/dev/null
-        || true
+      - python -m pip install -e ".[dev]" --quiet || pip install -e ".[dev]" --quiet
     status:
       - python -c "import fit" 2>/dev/null
 

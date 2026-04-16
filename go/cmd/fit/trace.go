@@ -49,7 +49,12 @@ func traceListCmd() *cobra.Command {
 					continue
 				}
 				// Count steps in this session
-				steps, _ := os.ReadDir(filepath.Join(tracesDir, e.Name()))
+				steps, err := os.ReadDir(filepath.Join(tracesDir, e.Name()))
+				if err != nil {
+					fmt.Fprintf(cmd.OutOrStderr(), "warning: cannot read session %s: %v\n", e.Name(), err)
+					fmt.Fprintf(cmd.OutOrStdout(), "%s  (steps: ?)\n", e.Name())
+					continue
+				}
 				fmt.Fprintf(cmd.OutOrStdout(), "%s  (%d steps)\n", e.Name(), len(steps))
 			}
 

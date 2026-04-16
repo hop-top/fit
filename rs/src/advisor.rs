@@ -78,7 +78,7 @@ impl RemoteAdvisor {
         let client = reqwest::Client::builder()
             .timeout(std::time::Duration::from_millis(timeout_ms))
             .build()
-            .unwrap_or_default();
+            .expect("failed to build reqwest client — TLS backend may be missing");
         Self {
             endpoint: endpoint.to_string(),
             timeout_ms,
@@ -88,6 +88,11 @@ impl RemoteAdvisor {
 
     pub fn from_endpoint(url: &str) -> Self {
         Self::new(url, 5000)
+    }
+
+    /// Return the configured timeout in milliseconds.
+    pub fn timeout_ms(&self) -> u64 {
+        self.timeout_ms
     }
 }
 
