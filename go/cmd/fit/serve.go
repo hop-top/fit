@@ -1,0 +1,122 @@
+package main
+
+import (
+	"context"
+	"fmt"
+	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
+
+	"github.com/spf13/cobra"
+	"hop.top/fit"
+)
+
+func serveCmd() *cobra.Command {
+	var (
+		addr        string
+		advisorModel string
+		timeout      int
+	)
+
+	cmd := &cobra.Command{
+		Use:   "serve",
+		Short: "Start advisor HTTP server",
+		Long: `Start an HTTP server that exposes the advisor API.
+
+The server accepts POST /advise requests with context JSON and returns
+advice conforming to advice-format-v1.`,
+		Args: cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			advisor := &stubAdvisor{model: advisorModel}
+			scorer := &stubScorer{}
+
+			mux := http.NewServeMux()
+			mux.HandleFunc("POST /advise", handleAdvise(advisor, scorer, timeout))
+
+			srv := &http.Server{
+				Addr:         addr,
+				Handler:      mux,
+				ReadTimeout:  time.Duration(timeout) * time.Millisecond,
+				WriteTimeout: time.Duration(timeout*2) * time.Millisecond,
+			}
+
+			errCh := make(chan error, 1)
+			go func() {
+				fmt.Fprintf(cmd.OutOrStdout(), "fit advisor serving on %s\n", addr)
+				errCh <- srv.ListenAndServe()
+			}()
+
+			sigCh := make(chan os.Signal, 1)
+			signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
+
+			select {
+			case err := <-errCh:
+				return err
+			case sig := <-sigCh:
+				fmt.Fprintf(cmd.OutOrStdout(), "\nreceived %s, shutting down\n", sig)
+				ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+				defer cancel()
+				return srv.Shutdown(ctx)
+			}
+		},
+	}
+
+	cmd.Flags().StringVarP(&addr, "addr", "a", ":8080", "listen address")
+	cmd.Flags().StringVarP(&advisorModel, "model", "m", "advisor-v1", "advisor model identifier")
+	cmd.Flags().IntVarP(&timeout, "timeout", "t", 5000, "request timeout in ms")
+
+	return cmd
+}
+
+func handleAdvise(
+	advisor fit.Advisor,
+	scorer fit.RewardScorer,
+	timeoutMs int,
+) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx, cancel := context.WithTimeout(r.Context(), time.Duration(timeoutMs)*time.Millisecond)
+		defer cancel()
+
+		var input map[string]any
+		if err := jsonDecode(r.Body, &input); err != nil {
+			http.Error(w, "invalid JSON: "+err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		advice, err := advisor.GenerateAdvice(ctx, input)
+		if err != nil {
+			http.Error(w, "advisor error: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		jsonEncode(w, advice)
+	}
+}
+
+// stubAdvisor is a placeholder until real advisor implementations land.
+type stubAdvisor struct{ model string }
+
+func (a *stubAdvisor) GenerateAdvice(_ context.Context, input map[string]any) (*fit.Advice, error) {
+	return &fit.Advice{
+		Domain:       "generic",
+		SteeringText: "No specialized advice available yet.",
+		Confidence:   0.5,
+		Version:      "1.0",
+		Metadata:     input,
+	}, nil
+}
+
+func (a *stubAdvisor) ModelID() string { return a.model }
+
+// stubScorer is a placeholder until real scorer implementations land.
+type stubScorer struct{}
+
+func (s *stubScorer) Score(_ string, _ map[string]any) (*fit.Reward, error) {
+	return &fit.Reward{
+		Score:     0.5,
+		Breakdown: map[string]float64{"accuracy": 0.5, "relevance": 0.5},
+	}, nil
+}
