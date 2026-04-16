@@ -19,11 +19,12 @@ const scorer = CompositeScorer.composite(["accuracy", "relevance", "safety"]);
 const session = new Session(advisor, adapter, scorer);
 
 // run() returns SessionResult for one-shot (default mode)
-// and SessionResult[] for multi-turn. Use type annotation to narrow:
-const result: SessionResult = await session.run(
+// and SessionResult[] for multi-turn. Use Array.isArray to narrow:
+const raw = await session.run(
   "What is the standard deduction?",
   { jurisdiction: "US", filing_status: "single" },
 );
+const result = Array.isArray(raw) ? raw[0] : raw;
 
 console.log("Output:", result.output);
 console.log("Reward:", result.reward.score);

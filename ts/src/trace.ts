@@ -21,7 +21,7 @@ export class TraceReader {
   async listSessions(): Promise<string[]> {
     try {
       const entries = await readdir(this.outputDir, { withFileTypes: true });
-      return entries.filter((e) => e.isDirectory()).map((e) => e.name);
+      return entries.filter((e) => e.isDirectory()).map((e) => e.name).sort();
     } catch (err: any) {
       if (err?.code === "ENOENT") return [];
       throw err;

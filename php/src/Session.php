@@ -44,12 +44,12 @@ class Session
 
         // When adapter failed, skip scorer and use null reward (reward-schema-v1).
         if ($adapterFailed) {
-            $reward = new Reward(null, []);
+            $reward = new Reward(null, [], ['error' => 'frontier_failure']);
         } else {
             try {
                 $reward = $this->scorer->score($output, $context);
             } catch (\Throwable) {
-                $reward = new Reward(null, []);
+                $reward = new Reward(null, [], ['error' => 'scorer_failure']);
             }
         }
 
