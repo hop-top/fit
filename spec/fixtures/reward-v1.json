@@ -1,0 +1,13 @@
+{
+  "score": 0.62,
+  "breakdown": {
+    "accuracy": 0.7,
+    "relevance": 0.8,
+    "safety": 1.0,
+    "efficiency": 0.0
+  },
+  "metadata": {
+    "scorer": "rubric-judge-v2",
+    "notes": "correct conclusion but verbose path"
+  }
+}
