@@ -37,12 +37,19 @@ class CompositeScorer(RewardScorer):
 
     def score(self, output: str, context: dict[str, Any]) -> Reward:
         rewards = [s.score(output, context) for s in self._scorers]
-        total_weight = sum(self._weights)
-        combined = sum(r.score * w for r, w in zip(rewards, self._weights))
-        # Merge breakdowns from all scorers (not just the first one).
+        # Merge breakdowns from all scorers
         merged_breakdown: dict[str, float] = {}
         for r in rewards:
             merged_breakdown.update(r.breakdown)
+        # If any child score is None, propagate None (failure semantics per reward-schema-v1)
+        if any(r.score is None for r in rewards):
+            return Reward(
+                score=None,
+                breakdown=merged_breakdown,
+                metadata={"scorers": len(rewards), "error": "child_score_is_null"},
+            )
+        total_weight = sum(self._weights)
+        combined = sum(r.score * w for r, w in zip(rewards, self._weights))
         return Reward(
             score=combined / total_weight if total_weight else 0.0,
             breakdown=merged_breakdown,

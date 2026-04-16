@@ -87,7 +87,8 @@ func (s *Session) Run(ctx context.Context, prompt string, contextMap map[string]
 			Frontier:  frontierMeta,
 			Reward:    partialReward,
 		}
-		return &SessionResult{Output: output, Reward: partialReward, Trace: partialTrace}, err
+		output = ""
+		return &SessionResult{Output: output, Reward: partialReward, Trace: partialTrace}, nil
 	}
 
 	// Score

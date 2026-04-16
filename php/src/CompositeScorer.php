@@ -50,14 +50,25 @@ class CompositeScorer implements RewardScorerInterface
             return new Reward(0.0, []);
         }
 
-        $combined = 0.0;
-        foreach ($rewards as $i => $reward) {
-            $combined += $reward->score * $this->weights[$i];
-        }
-
         $mergedBreakdown = [];
         foreach ($rewards as $reward) {
             $mergedBreakdown = array_merge($mergedBreakdown, $reward->breakdown);
+        }
+
+        // If any child score is null, propagate null (failure semantics per reward-schema-v1)
+        foreach ($rewards as $reward) {
+            if ($reward->score === null) {
+                return new Reward(
+                    score: null,
+                    breakdown: $mergedBreakdown,
+                    metadata: ['scorers' => count($rewards), 'error' => 'child_score_is_null'],
+                );
+            }
+        }
+
+        $combined = 0.0;
+        foreach ($rewards as $i => $reward) {
+            $combined += $reward->score * $this->weights[$i];
         }
 
         return new Reward(

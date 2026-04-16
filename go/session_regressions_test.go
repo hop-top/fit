@@ -152,9 +152,9 @@ func TestAdapterFailureProducesPartialTrace(t *testing.T) {
 
 	result, err := session.Run(context.Background(), "test", nil)
 
-	// Adapter error must still be propagated.
-	if err == nil {
-		t.Fatal("expected non-nil error from adapter failure")
+	// PR#16: frontier failure must return nil error (partial trace, not error).
+	if err != nil {
+		t.Fatalf("expected nil error from frontier failure, got: %v", err)
 	}
 
 	// Partial result must be returned (not nil).

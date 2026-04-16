@@ -55,12 +55,12 @@ class Session:
 
         # Score (skip when frontier failed — use null reward per reward-schema-v1)
         if frontier_failed:
-            reward = Reward(score=None, breakdown={})
+            reward = Reward(score=None, breakdown={}, metadata={"error": "frontier_failure"})
         else:
             try:
                 reward = self._scorer.score(output, ctx)
             except Exception:
-                reward = Reward(score=None, breakdown={})
+                reward = Reward(score=None, breakdown={}, metadata={"error": "scorer_failure"})
 
         trace = Trace(
             id=str(uuid.uuid4()),
