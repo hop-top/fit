@@ -120,8 +120,8 @@ impl RewardScorer for CompositeScorer {
                 serde_yaml::Value::Number((rewards.len() as u64).into()),
             );
             meta.insert(
-                "null_reason".into(),
-                serde_yaml::Value::String("child_scorer_null".into()),
+                "error".into(),
+                serde_yaml::Value::String("child_score_is_null".into()),
             );
             let merged_breakdown: BTreeMap<String, f64> = rewards
                 .iter()

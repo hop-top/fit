@@ -83,7 +83,7 @@ describe("CompositeScorer regressions", () => {
     const result = await scorer.score("test", {});
 
     expect(result.score).toBeNull();
-    expect(result.metadata.null_reason).toBe("child_scorer_null");
+    expect(result.metadata.error).toBe("child_score_is_null");
     // Breakdowns from all scorers should still be merged
     expect(result.breakdown).toHaveProperty("a");
     expect(result.breakdown).toHaveProperty("b");
@@ -103,7 +103,25 @@ describe("CompositeScorer regressions", () => {
     const result = await scorer.score("test", {});
 
     expect(result.score).toBeNull();
-    expect(result.metadata.null_reason).toBe("child_scorer_null");
+    expect(result.metadata.error).toBe("child_score_is_null");
+  });
+
+  // reward-schema-v1: null score must set metadata.error and merge breakdowns
+  it("conforms to reward-schema-v1: null score sets metadata.error", async () => {
+    const ok = new StubScorer({ score: 0.8, breakdown: { quality: 0.8 } });
+    const fail = new StubScorer({
+      score: null,
+      breakdown: { safety: 0.0 },
+    });
+    const scorer = new CompositeScorer([ok, fail], [0.6, 0.4]);
+    const result = await scorer.score("test", {});
+
+    expect(result.score).toBeNull();
+    expect(result.metadata).toHaveProperty("error");
+    expect(typeof result.metadata.error).toBe("string");
+    expect(result.metadata.error).toBe("child_score_is_null");
+    expect(result.breakdown).toHaveProperty("quality");
+    expect(result.breakdown).toHaveProperty("safety");
   });
 
   it("returns numeric score when all child scorers have numeric scores", async () => {

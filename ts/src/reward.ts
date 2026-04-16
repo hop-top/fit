@@ -39,7 +39,7 @@ export class CompositeScorer implements RewardScorer {
       return {
         score: null,
         breakdown: mergedBreakdown,
-        metadata: { scorers: rewards.length, null_reason: "child_scorer_null" },
+        metadata: { scorers: rewards.length, error: "child_score_is_null" },
       };
     }
     const totalWeight = this.weights.reduce((a, b) => a + b, 0);
