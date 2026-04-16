@@ -74,8 +74,12 @@ class GRPOTrainer:
         if self._config.use_trl:
             try:
                 return self._train_trl(dataset)
-            except ImportError:
-                logger.info("trl not available, falling back to simplified GRPO")
+            except ImportError as exc:
+                logger.info(
+                    "GRPOTrainer dependencies unavailable (%s), "
+                    "falling back to simplified GRPO",
+                    exc,
+                )
 
         return self._train_simplified(dataset)
 

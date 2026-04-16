@@ -328,13 +328,11 @@ class TestDetectFormatYml:
 
 
 class TestPR30YamlDirDocstringRegression:
-    """PR #30 review item 4 — load_yaml_dir docstring says step-NNN.yaml
-    pattern but implementation accepts ANY yaml with 'input' or 'frontier'
-    keys (rglob('*.y*ml') with no filename filter).
-
-    These tests document the current behavior mismatch. When the fix
-    tightens the loader to enforce the step-NNN pattern, update
-    test_non_step_pattern_file_loaded to assert NOT loaded.
+    """PR #30 review item 4 — load_yaml_dir now correctly documents
+    that it loads any YAML dict containing 'input' or 'frontier' keys.
+    These tests verify the documented behavior: non-trace YAML
+    (lacking both keys) is skipped, while any valid trace dict is
+    loaded regardless of filename pattern.
     """
 
     def test_non_step_pattern_file_loaded(self, tmp_path: Path) -> None:
@@ -368,3 +366,70 @@ class TestPR30YamlDirDocstringRegression:
         ingester = TraceIngester().load_yaml_dir(tmp_path)
         assert ingester.count() == 1
         assert ingester.to_trace_records()[0].id == "test-001"
+
+
+class TestPR31LoadBatchNonTraceFilterRegression:
+    """PR #31 review — load_batch() must apply input/frontier filter
+    for single YAML files, consistent with load_yaml_dir()."""
+
+    def test_single_yaml_non_trace_dict_skipped(self, tmp_path: Path) -> None:
+        """Single YAML file with non-trace dict must be skipped.
+
+        A file containing {"app": "fit"} (no input/frontier) should
+        NOT be ingested — load_batch must apply the same filter as
+        load_yaml_dir.
+        """
+        yml = tmp_path / "config.yaml"
+        yml.write_text(yaml.safe_dump({"app": "fit"}), encoding="utf-8")
+
+        ingester = TraceIngester().load_batch([yml])
+        assert ingester.count() == 0, (
+            f"Expected 0 (non-trace filtered), got {ingester.count()} — "
+            "load_batch must skip YAML dicts without input/frontier keys"
+        )
+
+    def test_single_yaml_list_filters_non_trace(
+        self, tmp_path: Path
+    ) -> None:
+        """YAML list of dicts: non-trace entries must be filtered.
+
+        File contains [{"app": "fit"}, {"input": {"prompt": "x"}}].
+        Only the second dict has input — should be the only record.
+        """
+        yml = tmp_path / "mixed.yaml"
+        yml.write_text(
+            yaml.safe_dump(
+                [{"app": "fit"}, {"input": {"prompt": "x"}}],
+                default_flow_style=False,
+            ),
+            encoding="utf-8",
+        )
+
+        ingester = TraceIngester().load_batch([yml])
+        assert ingester.count() == 1, (
+            f"Expected 1 (only trace dict), got {ingester.count()} — "
+            "load_batch must filter list items by input/frontier keys"
+        )
+
+    def test_load_batch_and_load_yaml_dir_consistent(
+        self, tmp_path: Path
+    ) -> None:
+        """load_batch and load_yaml_dir must apply the same filter.
+
+        Both code paths must skip non-trace YAML (no input/frontier).
+        """
+        yml = tmp_path / "nondir"
+        yml.mkdir()
+        cfg = yml / "config.yaml"
+        cfg.write_text(
+            yaml.safe_dump({"app": "fit", "version": "1.0"}),
+            encoding="utf-8",
+        )
+
+        dir_count = TraceIngester().load_yaml_dir(yml).count()
+        batch_count = TraceIngester().load_batch([cfg]).count()
+
+        assert dir_count == 0
+        assert batch_count == 0, (
+            f"load_batch must also filter non-trace, got {batch_count}"
+        )

@@ -263,3 +263,38 @@ class TestPR30ReviewRegressions:
             "_train_simplified still imports numpy as np -- "
             "remove the unused numpy dependency"
         )
+
+
+class TestPR31ImportErrorMsgRegression:
+    """PR #31 review — ImportError catch in train() must include the
+    actual exception in the log message so users can diagnose which
+    dependency is missing (trl, torch, or transformers).
+    """
+
+    def test_import_error_log_includes_exception_info(self) -> None:
+        """The except block must log the exception variable, not a
+        hardcoded 'trl not available' message.
+        """
+        import inspect
+
+        from fit.training.grpo import GRPOTrainer
+
+        source = inspect.getsource(GRPOTrainer.train)
+
+        # The except block must capture the exception (e.g. `except ImportError as exc`)
+        # and pass it to the logger call.
+        assert "except ImportError as exc" in source, (
+            "train() must capture ImportError as `exc` (or similar)"
+        )
+        # Verify exc is referenced after the except line
+        except_idx = source.index("except ImportError as exc")
+        after_except = source[except_idx:]
+        # Find the logger call — it must reference exc
+        logger_start = after_except.find("logger.")
+        assert logger_start >= 0, "No logger call in except block"
+        # Grab from logger call to the next `return` or method-level statement
+        logger_section = after_except[logger_start:]
+        assert "exc" in logger_section.split("return")[0], (
+            "The logger call in the except block must include the "
+            "exception variable so the actual missing dep is diagnosable."
+        )

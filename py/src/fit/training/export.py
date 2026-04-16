@@ -43,7 +43,13 @@ class ModelExporter:
             # Try converting from pytorch bin
             bin_file = self._model_path / "pytorch_model.bin"
             if bin_file.exists():
-                import torch  # noqa: F401
+                try:
+                    import torch  # noqa: F401
+                except ImportError as exc:
+                    raise ImportError(
+                        "Converting pytorch_model.bin to safetensors "
+                        "requires torch. Install with: pip install torch"
+                    ) from exc
 
                 state_dict = torch.load(
                     str(bin_file),
@@ -94,12 +100,13 @@ class ModelExporter:
         out.parent.mkdir(parents=True, exist_ok=True)
 
         try:
+            __import__("torch")
             __import__("transformers")
-        except ImportError:
+        except ImportError as exc:
             raise ImportError(
                 "ONNX export requires torch and transformers. "
                 "Install with: pip install torch transformers optimum"
-            )
+            ) from exc
 
         try:
             from optimum.onnxruntime import ORTModelForCausalLM  # type: ignore[import-untyped]

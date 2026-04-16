@@ -62,25 +62,29 @@ class TestModelExporter:
             pass  # expected when gguf not installed
 
     def test_push_to_hub(self, tmp_path: Path) -> None:
+        from unittest.mock import MagicMock, patch
+
         model_dir = tmp_path / "model"
         model_dir.mkdir()
         exporter = ModelExporter(str(model_dir))
 
-        # push_to_hub requires valid HF credentials and repo;
-        try:
+        captured_calls: dict[str, dict[str, object]] = {}
+
+        class FakeHfApi:
+            def upload_folder(self, **kwargs: object) -> None:
+                captured_calls["upload_folder"] = kwargs
+
+            def upload_file(self, **kwargs: object) -> None:
+                captured_calls["upload_file"] = kwargs
+
+        fake_hf_module = MagicMock(HfApi=FakeHfApi)
+        with patch.dict("sys.modules", {"huggingface_hub": fake_hf_module}):
             exporter.push_to_hub("test/repo", _training_result())
-        except ImportError as exc:
-            assert "huggingface" in str(exc).lower()
-        except Exception as exc:
-            message = str(exc).lower()
-            expected_markers = (
-                "401", "403", "404", "unauthorized", "forbidden",
-                "not found", "credentials", "authentication", "token",
-                "repo", "repository",
-            )
-            assert any(m in message for m in expected_markers), (
-                f"Unexpected push_to_hub failure: {exc}"
-            )
+
+        assert "upload_folder" in captured_calls
+        assert captured_calls["upload_folder"]["repo_id"] == "test/repo"
+        assert "upload_file" in captured_calls
+        assert captured_calls["upload_file"]["repo_id"] == "test/repo"
 
     def test_copy_artifacts(self, tmp_path: Path) -> None:
         model_dir = tmp_path / "model"
@@ -149,3 +153,100 @@ class TestPushToHubBytesIO:
         card = json.loads(content)
         assert "model_id" in card
         assert captured_kwargs["path_in_repo"] == "model_card.json"
+
+
+# ---------------------------------------------------------------------------
+# PR #31 regression: to_onnx preflight only checks transformers, not torch
+# ---------------------------------------------------------------------------
+
+
+class TestPR31OnnxMissingTorchRegression:
+    """to_onnx() preflight must check both torch and transformers."""
+
+    def test_onnx_preflight_checks_torch_and_transformers(self) -> None:
+        import inspect
+
+        source = inspect.getsource(ModelExporter.to_onnx)
+
+        # Find the first try block (the preflight check)
+        in_preflight_try = False
+        preflight_lines: list[str] = []
+        for line in source.splitlines():
+            stripped = line.strip()
+            if "try:" in stripped and not in_preflight_try:
+                in_preflight_try = True
+                continue
+            if in_preflight_try:
+                if stripped.startswith("except"):
+                    break
+                preflight_lines.append(stripped)
+
+        preflight_text = "\n".join(preflight_lines)
+        assert "transformers" in preflight_text, (
+            "Preflight should check transformers"
+        )
+        assert "torch" in preflight_text, (
+            "to_onnx preflight must check torch in addition to transformers. "
+            "When transformers is installed but torch is not, the user "
+            "should get the formatted error message, not a raw ImportError."
+        )
+
+
+# ---------------------------------------------------------------------------
+# PR #31 regression: to_safetensors torch import unguarded
+# ---------------------------------------------------------------------------
+
+
+class TestPR31SafetensorsTorchImportRegression:
+    """to_safetensors() must wrap torch import with clear ImportError."""
+
+    def test_safetensors_torch_import_is_guarded(self) -> None:
+        import inspect
+
+        source = inspect.getsource(ModelExporter.to_safetensors)
+        lines = source.splitlines()
+
+        # Find the bin_file block containing import torch
+        torch_import_idx = None
+        if_indent = None
+        for i, line in enumerate(lines):
+            if "import torch" in line and "bin_file" not in line:
+                torch_import_idx = i
+                break
+
+        assert torch_import_idx is not None, (
+            "Could not find 'import torch' in to_safetensors source"
+        )
+
+        # Walk backwards to find the bin_file block indent
+        for i in range(torch_import_idx - 1, -1, -1):
+            stripped = lines[i].strip()
+            if "if bin_file.exists():" in stripped:
+                if_indent = len(lines[i]) - len(lines[i].lstrip())
+                break
+
+        assert if_indent is not None, "Could not find bin_file.exists() block"
+
+        # Collect all lines within the bin_file block
+        in_block = False
+        block_lines: list[str] = []
+        for i, line in enumerate(lines):
+            stripped = line.strip()
+            if "if bin_file.exists():" in stripped:
+                in_block = True
+                continue
+            if in_block:
+                current_indent = len(line) - len(line.lstrip())
+                if stripped and current_indent <= if_indent and i > torch_import_idx:
+                    break
+                block_lines.append(stripped)
+
+        block_text = "\n".join(block_lines)
+        has_try = "try:" in block_text
+        has_except = "except ImportError" in block_text
+
+        assert has_try and has_except, (
+            "torch import inside bin_file block must be wrapped in "
+            "try/except ImportError with a clear message. "
+            f"Block text:\n{block_text}"
+        )

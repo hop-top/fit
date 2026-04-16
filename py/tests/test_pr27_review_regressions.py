@@ -197,26 +197,3 @@ class TestServeAdvisorEmptyYamlConfig:
                 f"Bug confirmed: empty YAML config causes {exc}. "
                 "normalize yaml.safe_load result to {} when None."
             )
-
-
-# ---------------------------------------------------------------------------
-# Bug 5 (trivial): duplicate comment in test_export.py
-# File: test_export.py, lines 69-70
-# ---------------------------------------------------------------------------
-
-
-class TestExportDuplicateComment:
-    """Verify the duplicate comment is removed."""
-
-    def test_no_duplicate_comment_in_test_export(self) -> None:
-        test_file = Path(__file__).parent / "test_export.py"
-        content = test_file.read_text(encoding="utf-8")
-        lines = content.splitlines()
-        dup_count = sum(
-            1 for line in lines
-            if "push_to_hub requires valid HF credentials" in line
-        )
-        assert dup_count <= 1, (
-            f"Bug confirmed: duplicate comment appears {dup_count} times "
-            "in test_export.py."
-        )

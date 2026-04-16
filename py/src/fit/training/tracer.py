@@ -165,10 +165,13 @@ class TraceIngester:
                     with p.open("r", encoding="utf-8") as f:
                         raw = yaml.safe_load(f)
                     if isinstance(raw, dict):
-                        self._records.append(_parse_raw(raw))
+                        if "input" in raw or "frontier" in raw:
+                            self._records.append(_parse_raw(raw))
                     elif isinstance(raw, list):
                         for item in raw:
-                            if isinstance(item, dict):
+                            if isinstance(item, dict) and (
+                                "input" in item or "frontier" in item
+                            ):
                                 self._records.append(_parse_raw(item))
             elif fmt == "sqlite":
                 self.load_sqlite(p)
