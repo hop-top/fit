@@ -36,10 +36,11 @@ class Session
         $adapterFailed = false;
         try {
             [$output, $frontierMeta] = $this->adapter->call($prompt, $advice);
+            $frontierMeta['output'] = $output;
         } catch (\Throwable $e) {
             $adapterFailed = true;
             $output = '';
-            $frontierMeta = ['error' => $e->getMessage()];
+            $frontierMeta = ['error' => $e->getMessage(), 'output' => $output];
         }
 
         // When adapter failed, skip scorer and use null reward (reward-schema-v1).

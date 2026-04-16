@@ -72,11 +72,13 @@ func (s *Session) Run(ctx context.Context, prompt string, contextMap map[string]
 	// Frontier
 	output, frontierMeta, err := s.Adapter.Call(ctx, prompt, advice)
 	if err != nil {
+		output = ""
 		if frontierMeta == nil {
 			frontierMeta = map[string]any{"error": err.Error()}
 		} else {
 			frontierMeta["error"] = err.Error()
 		}
+		frontierMeta["output"] = output
 		partialReward := &Reward{Score: nil, Breakdown: map[string]float64{}, Metadata: map[string]any{"error": "frontier_failure"}}
 		partialTrace := &Trace{
 			ID:        uuid.New().String(),
@@ -87,9 +89,13 @@ func (s *Session) Run(ctx context.Context, prompt string, contextMap map[string]
 			Frontier:  frontierMeta,
 			Reward:    partialReward,
 		}
-		output = ""
 		return &SessionResult{Output: output, Reward: partialReward, Trace: partialTrace}, nil
 	}
+
+	if frontierMeta == nil {
+		frontierMeta = map[string]any{}
+	}
+	frontierMeta["output"] = output
 
 	// Score
 	reward, err := s.Scorer.Score(output, contextMap)

@@ -114,11 +114,11 @@ export class Session {
     try {
       const result = await this.adapter.call(prompt, advice);
       output = result.output;
-      frontierMeta = result.meta;
+      frontierMeta = { ...result.meta, output };
     } catch (err) {
       frontierFailed = true;
       output = "";
-      frontierMeta = { error: err instanceof Error ? err.message : String(err) };
+      frontierMeta = { error: err instanceof Error ? err.message : String(err), output };
     }
 
     this.transition(SessionState.Score);

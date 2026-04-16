@@ -48,10 +48,11 @@ class Session:
         frontier_failed = False
         try:
             output, frontier_meta = self._adapter.call(prompt, advice)
+            frontier_meta = {**frontier_meta, "output": output}
         except Exception as exc:
             frontier_failed = True
             output = ""
-            frontier_meta = {"error": str(exc)}
+            frontier_meta = {"error": str(exc), "output": output}
 
         # Score (skip when frontier failed — use null reward per reward-schema-v1)
         if frontier_failed:
