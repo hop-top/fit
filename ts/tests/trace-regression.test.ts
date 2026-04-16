@@ -9,6 +9,7 @@ function makeTrace(id: string, sessionId: string): Trace {
     domain: "test",
     steering_text: "steer",
     confidence: 0.5,
+    version: "1.0",
   };
   const reward: Reward = {
     score: 0.9,

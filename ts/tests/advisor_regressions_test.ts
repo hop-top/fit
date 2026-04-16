@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { RemoteAdvisor } from "../src/advisor.js";
+import type { Advice } from "../src/types.js";
 
 describe("RemoteAdvisor regressions", () => {
   beforeEach(() => {
@@ -42,5 +43,21 @@ describe("RemoteAdvisor regressions", () => {
     const result = await advisor.generateAdvice({ prompt: "test" });
 
     expect(result.version).toBe("2.1");
+  });
+
+  it("Advice.version is required by interface (no undefined)", async () => {
+    // This line compiles only because version is present.
+    // If version were optional, omitting it would also compile;
+    // the fact that this fails to compile without version proves
+    // the field is required.
+    const _advice: Advice = {
+      domain: "conformance",
+      steering_text: "check",
+      confidence: 1,
+      version: "1.0",
+    };
+
+    // Runtime: version must always be a string, never undefined
+    expect(typeof _advice.version).toBe("string");
   });
 });

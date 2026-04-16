@@ -5,7 +5,7 @@ export interface Advice {
   confidence: number;
   constraints?: string[];
   metadata?: Record<string, unknown>;
-  version?: string;
+  version: string;
 }
 
 /** Reward scoring result (reward-schema-v1) */

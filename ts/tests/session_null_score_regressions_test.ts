@@ -85,6 +85,7 @@ describe("Session null-score regressions (PR#13)", () => {
     domain: "test",
     steering_text: "steer",
     confidence: 0.5,
+    version: "1.0",
   };
 
   it("frontier failure produces score: null (not NaN)", async () => {

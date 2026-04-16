@@ -18,6 +18,7 @@ describe("yaml-stub dump/load round-trip", () => {
         domain: "test",
         steering_text: "prefer concise answers",
         confidence: 0.85,
+        version: "1.0",
       },
       reward: {
         score: 0.92,

@@ -27,6 +27,7 @@ describe("Trace conformance regression", () => {
         domain: adviceData.domain as string,
         steering_text: adviceData.steering_text as string,
         confidence: adviceData.confidence as number,
+        version: (adviceData.version as string) ?? "1.0",
         constraints: adviceData.constraints as string[],
         metadata: adviceData.metadata as Record<string, unknown>,
       },
