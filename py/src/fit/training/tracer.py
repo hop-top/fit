@@ -87,10 +87,11 @@ class TraceIngester:
         return self
 
     def load_yaml_dir(self, path: str | Path) -> TraceIngester:
-        """Load xrr-style YAML cassettes from a directory tree.
+        """Load trace YAML files from a directory tree.
 
-        Expects structure: <path>/<session_id>/step-NNN.yaml
-        Mirrors the TraceWriter layout from fit.trace.
+        Scans recursively for ``*.yaml`` / ``*.yml`` files and ingests
+        any dict containing ``input`` or ``frontier`` keys. Non-trace
+        YAML (configs, schemas) is skipped automatically.
         """
         path = Path(path)
         if not path.is_dir():

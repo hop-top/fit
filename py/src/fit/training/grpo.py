@@ -14,7 +14,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from .dataset import FitDataset, TrainingExample
+from .dataset import FitDataset
 from .reward_fn import RewardFn
 
 logger = logging.getLogger(__name__)
@@ -186,7 +186,6 @@ class GRPOTrainer:
         """
         import random
 
-        import numpy as np  # noqa: F401
 
         try:
             import torch

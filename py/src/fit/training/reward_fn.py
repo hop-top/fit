@@ -146,23 +146,27 @@ def _parse_score(text: str) -> float:
         re.IGNORECASE,
     )
     if match:
-        return min(float(match.group(1)) / float(match.group(2)), 1.0)
+        denom = float(match.group(2))
+        return min(float(match.group(1)) / denom, 1.0) if denom > 0 else 0.5
 
     # Try prefixed decimal/integer: "Score: 0.8", "Rating: 8"
     match = re.search(r"(?:score|rating)[:\s]+(\d+\.?\d*)", text, re.IGNORECASE)
     if match:
         val = float(match.group(1))
-        return min(max(val, 0.0), 1.0) if val <= 1.0 else val / 10.0
+        raw = val if val <= 1.0 else val / 10.0
+        return min(max(raw, 0.0), 1.0)
 
     # Try bare fraction: "4/5"
     match = re.search(r"(\d+\.?\d*)\s*/\s*(\d+)", text)
     if match:
-        return min(float(match.group(1)) / float(match.group(2)), 1.0)
+        denom = float(match.group(2))
+        return min(float(match.group(1)) / denom, 1.0) if denom > 0 else 0.5
 
     match = re.search(r"(\d+\.?\d*)", text)
     if match:
         val = float(match.group(1))
-        return min(max(val, 0.0), 1.0) if val <= 1.0 else val / 10.0
+        raw = val if val <= 1.0 else val / 10.0
+        return min(max(raw, 0.0), 1.0)
 
     return 0.5
 
