@@ -108,7 +108,7 @@ A session transitions to Done when:
 
 - Advisor failure: use empty advice (no steering), continue
 - Frontier failure: record error in trace, return partial result
-- Scorer failure: record NaN reward, flag for review
+- Scorer failure: set score to null, add error details to metadata
 - Any failure: trace is still written (partial fields allowed)
 
 ## Advice injection

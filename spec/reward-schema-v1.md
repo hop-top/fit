@@ -11,10 +11,10 @@ Language-agnostic spec for reward scoring.
   "required": ["score", "breakdown"],
   "properties": {
     "score": {
-      "type": "number",
+      "type": ["number", "null"],
       "minimum": 0.0,
       "maximum": 1.0,
-      "description": "Aggregate reward scalar"
+      "description": "Aggregate reward scalar. null indicates scorer failure (see metadata.error)"
     },
     "breakdown": {
       "type": "object",
@@ -82,6 +82,18 @@ Language-agnostic spec for reward scoring.
   "metadata": {
     "scorer": "rubric-judge-v2",
     "notes": "correct conclusion but verbose path"
+  }
+}
+```
+
+### Scorer failure
+```json
+{
+  "score": null,
+  "breakdown": {},
+  "metadata": {
+    "error": "scorer_timeout",
+    "error_detail": "rubric-judge-v2 timed out after 5000ms"
   }
 }
 ```

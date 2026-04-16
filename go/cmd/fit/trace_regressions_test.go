@@ -2,10 +2,14 @@ package main
 
 import (
 	"bytes"
+	"encoding/json"
+	"math"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"hop.top/fit"
 )
 
 // Regression: trace list must report error when a session directory is
@@ -66,5 +70,122 @@ func TestTraceListUnreadableSessionDir(t *testing.T) {
 	// A warning about the unreadable session must be emitted.
 	if !strings.Contains(combined, "warning") || !strings.Contains(combined, "session-bad") {
 		t.Errorf("expected warning about session-bad, got stdout=%q stderr=%q", stdout.String(), stderr.String())
+	}
+}
+
+// Regression: trace show --format json must not fail when reward contains
+// NaN or Inf floats. encoding/json rejects non-finite floats, so we
+// sanitize them before encoding.
+//
+// Before fix: json.Encoder.Encode would error with "unsupported value"
+// when Reward.Score was NaN or Inf. After fix: non-finite values are
+// replaced with 0 and a metadata flag is set.
+func TestTraceShowJSONSanitizesNaN(t *testing.T) {
+	trace := fit.Trace{
+		ID:        "t1",
+		SessionID: "s1",
+		Timestamp: "2025-01-01T00:00:00Z",
+		Reward: &fit.Reward{
+			Score:     math.NaN(),
+			Breakdown: map[string]float64{"accuracy": math.Inf(1), "safety": 0.9},
+		},
+	}
+	sanitizeNonFinite(&trace)
+
+	// Score should be 0, not NaN.
+	if trace.Reward.Score != 0 {
+		t.Errorf("Score = %v, want 0", trace.Reward.Score)
+	}
+
+	// Metadata must record the sanitization.
+	if trace.Reward.Metadata["scorer_error"] != "non-finite score sanitized to 0" {
+		t.Errorf("Metadata[scorer_error] = %v, want sanitization note", trace.Reward.Metadata["scorer_error"])
+	}
+
+	// Breakdown accuracy should be 0, not +Inf.
+	if trace.Reward.Breakdown["accuracy"] != 0 {
+		t.Errorf("Breakdown[accuracy] = %v, want 0", trace.Reward.Breakdown["accuracy"])
+	}
+
+	// Safety should be untouched.
+	if trace.Reward.Breakdown["safety"] != 0.9 {
+		t.Errorf("Breakdown[safety] = %v, want 0.9", trace.Reward.Breakdown["safety"])
+	}
+
+	// Full JSON encoding must succeed.
+	var buf bytes.Buffer
+	err := json.NewEncoder(&buf).Encode(trace)
+	if err != nil {
+		t.Fatalf("json.Encode failed: %v", err)
+	}
+}
+
+func TestTraceShowJSONSanitizesInf(t *testing.T) {
+	trace := fit.Trace{
+		ID:        "t2",
+		SessionID: "s2",
+		Timestamp: "2025-01-01T00:00:00Z",
+		Reward: &fit.Reward{
+			Score:     math.Inf(-1),
+			Breakdown: map[string]float64{},
+		},
+	}
+	sanitizeNonFinite(&trace)
+
+	if trace.Reward.Score != 0 {
+		t.Errorf("Score = %v, want 0", trace.Reward.Score)
+	}
+	if trace.Reward.Metadata["scorer_error"] != "non-finite score sanitized to 0" {
+		t.Errorf("Metadata[scorer_error] = %v, want sanitization note", trace.Reward.Metadata["scorer_error"])
+	}
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(trace); err != nil {
+		t.Fatalf("json.Encode failed: %v", err)
+	}
+}
+
+func TestTraceShowJSONNilRewardNoPanic(t *testing.T) {
+	trace := fit.Trace{
+		ID:        "t3",
+		SessionID: "s3",
+		Timestamp: "2025-01-01T00:00:00Z",
+		Reward:    nil,
+	}
+	// Must not panic on nil reward.
+	sanitizeNonFinite(&trace)
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(trace); err != nil {
+		t.Fatalf("json.Encode failed: %v", err)
+	}
+}
+
+func TestTraceShowJSONFiniteUntouched(t *testing.T) {
+	trace := fit.Trace{
+		ID:        "t4",
+		SessionID: "s4",
+		Timestamp: "2025-01-01T00:00:00Z",
+		Reward: &fit.Reward{
+			Score:     0.75,
+			Breakdown: map[string]float64{"a": 0.5},
+			Metadata:  map[string]any{"scorer": "test"},
+		},
+	}
+	sanitizeNonFinite(&trace)
+
+	if trace.Reward.Score != 0.75 {
+		t.Errorf("Score = %v, want 0.75", trace.Reward.Score)
+	}
+	if trace.Reward.Breakdown["a"] != 0.5 {
+		t.Errorf("Breakdown[a] = %v, want 0.5", trace.Reward.Breakdown["a"])
+	}
+	// Existing metadata must not be overwritten.
+	if trace.Reward.Metadata["scorer"] != "test" {
+		t.Errorf("Metadata[scorer] = %v, want 'test'", trace.Reward.Metadata["scorer"])
+	}
+	// No scorer_error key should be added for finite values.
+	if _, ok := trace.Reward.Metadata["scorer_error"]; ok {
+		t.Error("scorer_error should not be set for finite scores")
 	}
 }

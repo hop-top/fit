@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"math"
 	"os"
 	"path/filepath"
 
@@ -103,6 +104,7 @@ func traceShowCmd() *cobra.Command {
 				if err := yamlUnmarshal(data, &trace); err != nil {
 					return fmt.Errorf("parse trace: %w", err)
 				}
+				sanitizeNonFinite(&trace)
 				enc := json.NewEncoder(cmd.OutOrStdout())
 				enc.SetIndent("", "  ")
 				return enc.Encode(trace)
@@ -118,4 +120,26 @@ func traceShowCmd() *cobra.Command {
 	cmd.Flags().StringVarP(&format, "format", "f", "yaml", "output format (yaml|json)")
 
 	return cmd
+}
+
+// sanitizeNonFinite replaces NaN/Inf floats in the trace with JSON-safe
+// values so encoding/json does not error. Score is set to 0 with a
+// metadata flag; breakdown values are set to 0.
+func sanitizeNonFinite(t *fit.Trace) {
+	if t.Reward == nil {
+		return
+	}
+	r := t.Reward
+	if math.IsNaN(r.Score) || math.IsInf(r.Score, 0) {
+		r.Score = 0
+		if r.Metadata == nil {
+			r.Metadata = make(map[string]any)
+		}
+		r.Metadata["scorer_error"] = "non-finite score sanitized to 0"
+	}
+	for k, v := range r.Breakdown {
+		if math.IsNaN(v) || math.IsInf(v, 0) {
+			r.Breakdown[k] = 0
+		}
+	}
 }

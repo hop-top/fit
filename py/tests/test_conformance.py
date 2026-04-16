@@ -15,11 +15,11 @@ FIXTURES = Path(__file__).resolve().parent.parent.parent / "spec" / "fixtures"
 
 
 def _load_yaml(name: str) -> dict[str, Any]:
-    return yaml.safe_load((FIXTURES / name).read_text())
+    return yaml.safe_load((FIXTURES / name).read_text(encoding="utf-8"))
 
 
 def _load_json(name: str) -> dict[str, Any]:
-    return json.loads((FIXTURES / name).read_text())
+    return json.loads((FIXTURES / name).read_text(encoding="utf-8"))
 
 
 class TestAdviceConformance:

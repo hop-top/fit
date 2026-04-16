@@ -9,7 +9,7 @@ npm install @hop/fit
 ## Basic usage
 
 ```typescript
-import { Session, RemoteAdvisor, CompositeScorer } from "@hop/fit";
+import { Session, RemoteAdvisor, CompositeScorer, SessionResult } from "@hop/fit";
 import { AnthropicAdapter } from "@hop/fit/adapters";
 
 const advisor = RemoteAdvisor.fromEndpoint("http://localhost:8080");
@@ -18,13 +18,15 @@ const scorer = CompositeScorer.composite(["accuracy", "relevance", "safety"]);
 
 const session = new Session(advisor, adapter, scorer);
 
-const { output, reward, trace } = await session.run(
+// run() returns SessionResult for one-shot (default mode)
+// and SessionResult[] for multi-turn. Use type annotation to narrow:
+const result: SessionResult = await session.run(
   "What is the standard deduction?",
   { jurisdiction: "US", filing_status: "single" },
 );
 
-console.log("Output:", output);
-console.log("Reward:", reward.score);
+console.log("Output:", result.output);
+console.log("Reward:", result.reward.score);
 ```
 
 ## Adapter configuration
