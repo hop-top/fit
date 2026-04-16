@@ -1,0 +1,12 @@
+{
+  "domain": "tax-compliance",
+  "steering_text": "Cite IRS publication numbers. Verify filing status before calculating. Flag state-specific rules.",
+  "confidence": 0.85,
+  "constraints": [
+    "never fabricate tax code sections",
+    "cite specific IRS publication numbers"
+  ],
+  "metadata": {
+    "model": "advisor-sample-v1.0"
+  }
+}
