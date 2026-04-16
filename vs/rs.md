@@ -18,6 +18,8 @@ cargo add fit
 ## Basic usage
 
 ```rust
+use std::collections::HashMap;
+
 use fit::{
     Advisor, Adapter, RewardScorer,
     RemoteAdvisor, Session, SessionConfig, SessionMode,
@@ -29,6 +31,11 @@ async fn main() -> Result<(), fit::FitError> {
     let advisor = RemoteAdvisor::from_endpoint("http://localhost:8080");
     let adapter = AnthropicAdapter::new(&std::env::var("ANTHROPIC_API_KEY").unwrap());
     let scorer = CompositeScorer::from_dimensions(&["accuracy", "relevance", "safety"]);
+
+    let context_map: HashMap<&str, &str> = HashMap::from([
+        ("jurisdiction", "US"),
+        ("filing_status", "single"),
+    ]);
 
     let session = Session::new(advisor, adapter, scorer);
     let result = session.run(

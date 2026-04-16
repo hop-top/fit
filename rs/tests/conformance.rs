@@ -25,7 +25,7 @@ fn advice_parse_yaml() {
     let yaml = load_yaml_str("advice-v1.yaml");
     let a = Advice::from_yaml(&yaml).expect("parse yaml");
     assert_eq!(a.domain, "tax-compliance");
-    assert!((a.confidence - 0.87).abs() < f64::EPSILON);
+    assert!((a.confidence - 0.87).abs() < 1e-10);
     assert_eq!(a.constraints.len(), 3);
     assert_eq!(a.version, "1.0");
 }

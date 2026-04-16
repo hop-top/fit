@@ -9,6 +9,11 @@ export class CompositeScorer implements RewardScorer {
   private weights: number[];
 
   constructor(scorers: RewardScorer[], weights?: number[]) {
+    if (weights !== undefined && weights.length !== scorers.length) {
+      throw new Error(
+        `weights.length (${weights.length}) must equal scorers.length (${scorers.length})`,
+      );
+    }
     this.scorers = scorers;
     this.weights = weights ?? scorers.map(() => 1 / scorers.length);
   }
@@ -21,6 +26,13 @@ export class CompositeScorer implements RewardScorer {
       this.scorers.map((s) => s.score(output, context)),
     );
     const totalWeight = this.weights.reduce((a, b) => a + b, 0);
+    if (totalWeight === 0) {
+      return {
+        score: 0.0,
+        breakdown: {},
+        metadata: { scorers: 0 },
+      };
+    }
     const combined = rewards.reduce(
       (sum, r, i) => sum + r.score * this.weights[i],
       0,

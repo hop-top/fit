@@ -22,7 +22,7 @@ readonly class Advice
     {
         return [
             'domain' => $this->domain,
-            'steeringText' => $this->steeringText,
+            'steering_text' => $this->steeringText,
             'confidence' => $this->confidence,
             'constraints' => $this->constraints,
             'metadata' => $this->metadata,

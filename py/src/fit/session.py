@@ -40,7 +40,7 @@ class Session:
 
         # Advise
         try:
-            advice = self._advisor.generate_advice({"prompt": prompt, **ctx})
+            advice = self._advisor.generate_advice({"prompt": prompt, "context": ctx})
         except Exception:
             advice = Advice(domain="unknown", steering_text="", confidence=0.0)
 

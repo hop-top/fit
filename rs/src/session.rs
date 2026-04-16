@@ -159,7 +159,16 @@ where
         context: HashMap<String, serde_yaml::Value>,
     ) -> Result<SessionResult, FitError> {
         let session_id = uuid::Uuid::new_v4().to_string();
+        self.run_with_session_id(prompt, context, &session_id).await
+    }
 
+    /// Internal: run a single step with a provided session_id.
+    async fn run_with_session_id(
+        &mut self,
+        prompt: &str,
+        context: HashMap<String, serde_yaml::Value>,
+        session_id: &str,
+    ) -> Result<SessionResult, FitError> {
         // Reset state so run() can be called multiple times (e.g. from run_multi_turn)
         self.state = SessionState::Init;
 
@@ -210,7 +219,7 @@ where
 
         let trace = Trace {
             id: uuid::Uuid::new_v4().to_string(),
-            session_id: session_id.clone(),
+            session_id: session_id.to_string(),
             timestamp: chrono::Utc::now().to_rfc3339(),
             input,
             advice,
@@ -251,11 +260,17 @@ where
         mut context: HashMap<String, serde_yaml::Value>,
     ) -> Result<Vec<SessionResult>, FitError> {
         self.config.mode = SessionMode::MultiTurn;
+        let session_id = uuid::Uuid::new_v4().to_string();
+        self.step = 0;
+        self.traces.clear();
+        self.state = SessionState::Init;
         let mut results = vec![];
         let mut current_prompt = prompt.to_string();
 
         loop {
-            let result = self.run(&current_prompt, context.clone()).await?;
+            let result = self
+                .run_with_session_id(&current_prompt, context.clone(), &session_id)
+                .await?;
             let done = result.reward.score >= self.config.reward_threshold
                 || self.step >= self.config.max_steps;
 

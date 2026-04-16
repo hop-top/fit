@@ -33,7 +33,7 @@ readonly class Trace
     {
         return [
             'id' => $this->id,
-            'sessionId' => $this->sessionId,
+            'session_id' => $this->sessionId,
             'timestamp' => $this->timestamp,
             'input' => $this->input,
             'advice' => $this->advice->toArray(),

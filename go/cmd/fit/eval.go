@@ -14,8 +14,6 @@ import (
 func evalCmd() *cobra.Command {
 	var (
 		datasetPath string
-		outputDir   string
-		format      string
 	)
 
 	cmd := &cobra.Command{
@@ -24,7 +22,7 @@ func evalCmd() *cobra.Command {
 		Long: `Evaluate advisor performance against a dataset of prompts.
 
 Loads test cases from the dataset file, runs each through an advisor session,
-and writes traces and a summary report.`,
+and prints scores to stdout.`,
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if datasetPath == "" {
@@ -72,9 +70,7 @@ and writes traces and a summary report.`,
 		},
 	}
 
-	cmd.Flags().StringVarP(&datasetPath, "dataset", "d", "", "path to dataset JSON/YAML file (required)")
-	cmd.Flags().StringVarP(&outputDir, "output", "o", "./traces", "trace output directory")
-	cmd.Flags().StringVarP(&format, "format", "f", "yaml", "output format (yaml|json)")
+	cmd.Flags().StringVarP(&datasetPath, "dataset", "d", "", "path to dataset JSON file (required)")
 
 	_ = cmd.MarkFlagRequired("dataset")
 

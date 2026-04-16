@@ -20,7 +20,7 @@ class Session
         $sessionId = bin2hex(random_bytes(16));
 
         try {
-            $advice = $this->advisor->generateAdvice(['prompt' => $prompt] + $context);
+            $advice = $this->advisor->generateAdvice(['prompt' => $prompt, 'context' => $context]);
         } catch (\Throwable) {
             $advice = new Advice('unknown', '', 0.0);
         }
@@ -37,7 +37,7 @@ class Session
             id: bin2hex(random_bytes(16)),
             sessionId: $sessionId,
             timestamp: gmdate('c'),
-            input: ['prompt' => $prompt] + $context,
+            input: ['prompt' => $prompt, 'context' => $context],
             advice: $advice,
             frontier: $frontierMeta,
             reward: $reward,
