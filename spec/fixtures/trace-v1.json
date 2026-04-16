@@ -13,6 +13,7 @@
     "domain": "tax-compliance",
     "steering_text": "Cite IRS publication numbers. Flag if rule changed in 2025.",
     "confidence": 0.91,
+    "version": "1.0",
     "constraints": ["cite sources", "no speculation"],
     "metadata": {
       "model": "advisor-tax-v2.3"

@@ -29,7 +29,7 @@ export interface SessionResult {
 
 /** Valid state transitions per session-protocol.md. */
 const VALID_TRANSITIONS: Record<string, Set<string>> = {
-  [SessionState.Init]: new Set([SessionState.Advise]),
+  [SessionState.Init]: new Set([SessionState.Advise, SessionState.Done]),
   [SessionState.Advise]: new Set([SessionState.Frontier]),
   [SessionState.Frontier]: new Set([SessionState.Score]),
   [SessionState.Score]: new Set([SessionState.Trace]),
@@ -176,8 +176,9 @@ export class Session {
     prompt: string,
     context: Record<string, unknown>,
   ): Promise<SessionResult[]> {
-    // Short-circuit: 0-step session produces no results and no state change.
+    // Short-circuit: 0-step session transitions Init -> Done.
     if (this.config.maxSteps === 0) {
+      this.transition(SessionState.Done);
       return [];
     }
 

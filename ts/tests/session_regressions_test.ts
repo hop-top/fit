@@ -285,6 +285,24 @@ describe("Session regressions", () => {
     expect(results).toHaveLength(0);
   });
 
+  it("multi-turn maxSteps=0 transitions state to Done (not Init)", async () => {
+    // Regression: PR#7 left session in Init for maxSteps=0, but all
+    // other ports transition to Done. Session must end in Done state.
+    const advisor = new StubAdvisor(baseAdvice);
+    const adapter = new StubAdapter("out");
+    const scorer = new ConstantScorer(0.5);
+
+    const session = new Session(advisor, adapter, scorer, {
+      mode: "multi-turn",
+      maxSteps: 0,
+      rewardThreshold: 1.0,
+    });
+
+    await session.run("prompt");
+
+    expect(session.getState()).toBe(SessionState.Done);
+  });
+
   it("fallback advice has all fields when advisor throws", async () => {
     // Regression: catch block omitted version, constraints, metadata
     const advisor = new ThrowingAdvisor();

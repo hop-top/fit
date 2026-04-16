@@ -48,6 +48,7 @@ def _trace_to_dict(trace: Trace) -> dict[str, Any]:
             "domain": trace.advice.domain,
             "steering_text": trace.advice.steering_text,
             "confidence": trace.advice.confidence,
+            "version": trace.advice.version,
             "constraints": trace.advice.constraints,
             "metadata": trace.advice.metadata,
         },

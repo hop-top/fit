@@ -127,7 +127,7 @@ Combine scorers with weights:
 let scorer = CompositeScorer::new(
     vec![Box::new(TaxAccuracyScorer), Box::new(SafetyScorer)],
     vec![0.7, 0.3],
-);
+)?;
 ```
 
 ## Trace handling

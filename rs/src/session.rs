@@ -153,18 +153,17 @@ where
         Ok(())
     }
 
-    /// Run a one-shot session: Init -> Advise -> Frontier -> Score -> Trace
-    ///
-    /// Note: Done is NOT reached by this method. The session ends in Trace
-    /// state. Use `run_multi_turn` for automatic Done transition, or
-    /// transition to Done externally after inspecting the result.
+    /// Run a one-shot session: Init -> Advise -> Frontier -> Score -> Trace -> Done
     pub async fn run(
         &mut self,
         prompt: &str,
         context: HashMap<String, serde_yaml::Value>,
     ) -> Result<SessionResult, FitError> {
         let session_id = uuid::Uuid::new_v4().to_string();
-        self.run_with_session_id(prompt, context, &session_id).await
+        let mut result = self.run_with_session_id(prompt, context, &session_id).await?;
+        self.transition(SessionState::Done)?;
+        result.state = self.state.clone();
+        Ok(result)
     }
 
     /// Internal: run a single step with a provided session_id.
@@ -246,8 +245,9 @@ where
 
         self.traces.push(trace.clone());
 
-        // Note: Done transition is deferred to the caller (run_multi_turn or user)
-        // so run() can be reused in multi-turn loops.
+        // Note: Done transition is handled by the public callers:
+        // - run() transitions Trace->Done after this returns
+        // - run_multi_turn transitions Trace->Done after the loop ends
 
         Ok(SessionResult {
             output,

@@ -1,8 +1,8 @@
-"""Regression tests for session context shape bug.
+"""Regression tests for session and trace bugs.
 
-Bug: generate_advice() was called with {"prompt": prompt, **ctx}
-which flattened the context dict into the top level. The session
-protocol spec requires {"prompt": prompt, "context": ctx}.
+Includes:
+- Session context shape bug (flattened context dict)
+- Trace serialization dropping advice.version
 """
 
 from __future__ import annotations
@@ -12,7 +12,8 @@ from typing import Any
 from fit.advisor import Advisor
 from fit.reward import RewardScorer
 from fit.session import Session
-from fit.types import Advice, Reward
+from fit.trace import _trace_to_dict
+from fit.types import Advice, Reward, Trace
 
 
 class CaptureAdvisor(Advisor):
@@ -91,3 +92,34 @@ def test_advisor_no_context_collision():
     assert advisor.captured_context["prompt"] == "real prompt"
     # The collision key should live inside "context"
     assert advisor.captured_context["context"]["prompt"] == "evil override"
+
+
+def test_trace_to_dict_includes_advice_version():
+    """Regression: _trace_to_dict() dropped advice.version from output.
+
+    Before fix: the advice dict in serialized traces was missing the
+    "version" key even though Advice.version was set (default "1.0").
+    """
+    advice = Advice(
+        domain="test",
+        steering_text="steer",
+        confidence=0.9,
+        version="1.0",
+    )
+    reward = Reward(score=0.95, breakdown={"accuracy": 1.0})
+    trace = Trace(
+        id="test-id",
+        session_id="sess-1",
+        timestamp="2026-04-15T10:00:00Z",
+        input={"prompt": "hello", "context": {}},
+        advice=advice,
+        frontier={"model": "stub"},
+        reward=reward,
+    )
+
+    d = _trace_to_dict(trace)
+
+    assert "version" in d["advice"], (
+        "advice dict missing 'version' key"
+    )
+    assert d["advice"]["version"] == "1.0"

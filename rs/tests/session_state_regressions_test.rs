@@ -40,14 +40,13 @@ impl RewardScorer for FixedScorer {
     }
 }
 
-/// Regression: one-shot run() must end in Trace state (not Done).
+/// Regression: one-shot run() must end in Done state (per spec/session-protocol.md).
 ///
-/// Before fix: run_with_session_id assigned self.state = SessionState::Init
-/// directly, bypassing validate_transition. The one-shot run() left the
-/// session in Trace state after completion, with Done deferred to the caller.
-/// This test verifies the state machine follows valid transitions throughout.
+/// Before fix: run() returned after run_with_session_id which left the session
+/// in Trace state. The spec defines Done as the terminal state for one-shot.
+/// This test verifies that run() transitions Trace->Done before returning.
 #[tokio::test]
-async fn one_shot_ends_in_trace_state() {
+async fn one_shot_ends_in_done_state() {
     let advisor = fit::StubAdvisor::new("stub");
     let adapter = EchoAdapter;
     let scorer = FixedScorer(0.8);
@@ -58,13 +57,13 @@ async fn one_shot_ends_in_trace_state() {
         .await
         .expect("one-shot should succeed");
 
-    // After run_with_session_id, state must be Trace (Done is deferred)
+    // Per spec, one-shot must end in Done (Trace->Done transition)
     assert_eq!(
         result.state,
-        SessionState::Trace,
-        "one-shot run should end in Trace state"
+        SessionState::Done,
+        "one-shot run should end in Done state"
     );
-    assert_eq!(*session.state(), SessionState::Trace);
+    assert_eq!(*session.state(), SessionState::Done);
 }
 
 /// Regression: multi-turn must follow Trace->Advise between steps
