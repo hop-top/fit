@@ -71,4 +71,31 @@ describe("CompositeScorer regressions", () => {
     // Before fix: metadata.scorers was 0 even though 1 scorer exists
     expect(result.metadata.scorers).toBe(1);
   });
+
+  it("propagates null when any child scorer returns null score", async () => {
+    const good = new StubScorer({ score: 0.9, breakdown: { a: 0.9 } });
+    const bad = new StubScorer({
+      score: null,
+      breakdown: { b: 0.0 },
+      metadata: { error: "child_failed" },
+    });
+    const scorer = new CompositeScorer([good, bad], [0.5, 0.5]);
+    const result = await scorer.score("test", {});
+
+    expect(result.score).toBeNull();
+    expect(result.metadata.null_reason).toBe("child_scorer_null");
+    // Breakdowns from all scorers should still be merged
+    expect(result.breakdown).toHaveProperty("a");
+    expect(result.breakdown).toHaveProperty("b");
+  });
+
+  it("returns numeric score when all child scorers have numeric scores", async () => {
+    const a = new StubScorer({ score: 0.8, breakdown: { x: 0.8 } });
+    const b = new StubScorer({ score: 0.6, breakdown: { y: 0.6 } });
+    const scorer = new CompositeScorer([a, b], [0.5, 0.5]);
+    const result = await scorer.score("test", {});
+
+    expect(result.score).not.toBeNull();
+    expect(result.score).toBeCloseTo(0.7);
+  });
 });

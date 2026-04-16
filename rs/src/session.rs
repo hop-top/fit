@@ -215,10 +215,10 @@ where
         // Frontier -> Score
         self.transition(SessionState::Score)?;
 
-        // Score: evaluate output, fallback to NaN on failure
+        // Score: evaluate output, fallback to null on failure
         let reward = match self.scorer.score(&output, &context) {
             Ok(r) => r,
-            Err(_) => Reward::new(f64::NAN, BTreeMap::new()),
+            Err(_) => Reward::null(BTreeMap::new()),
         };
 
         // Score -> Trace
@@ -296,7 +296,7 @@ where
             let result = self
                 .run_with_session_id(&current_prompt, context.clone(), &session_id)
                 .await?;
-            let done = result.reward.score >= self.config.reward_threshold
+            let done = result.reward.score.map_or(false, |s| s >= self.config.reward_threshold)
                 || self.step >= self.config.max_steps;
 
             results.push(result);

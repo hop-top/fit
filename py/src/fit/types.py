@@ -20,7 +20,7 @@ class Advice:
 class Reward:
     """Reward scoring result (reward-schema-v1)."""
 
-    score: float
+    score: float | None
     breakdown: dict[str, float]
     metadata: dict[str, Any] = field(default_factory=dict)
 

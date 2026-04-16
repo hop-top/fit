@@ -56,6 +56,7 @@ def _trace_to_dict(trace: Trace) -> dict[str, Any]:
         "reward": {
             "score": trace.reward.score,
             "breakdown": trace.reward.breakdown,
+            "metadata": trace.reward.metadata,
         },
         "metadata": trace.metadata,
     }

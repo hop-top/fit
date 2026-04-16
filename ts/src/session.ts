@@ -209,7 +209,10 @@ export class Session {
       const result = await this.runStep(sessionId, prompt, context);
       results.push(result);
 
-      if (result.reward.score >= this.config.rewardThreshold) {
+      if (
+        result.reward.score !== null &&
+        result.reward.score >= this.config.rewardThreshold
+      ) {
         break;
       }
     }

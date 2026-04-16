@@ -37,8 +37,20 @@ export class CompositeScorer implements RewardScorer {
         metadata: { scorers: rewards.length },
       };
     }
+    // If any scorer returns null score, propagate null for the composite.
+    if (rewards.some((r) => r.score === null)) {
+      const mergedBreakdown: Record<string, number> = {};
+      for (const r of rewards) {
+        Object.assign(mergedBreakdown, r.breakdown);
+      }
+      return {
+        score: null,
+        breakdown: mergedBreakdown,
+        metadata: { scorers: rewards.length, null_reason: "child_scorer_null" },
+      };
+    }
     const combined = rewards.reduce(
-      (sum, r, i) => sum + r.score * this.weights[i],
+      (sum, r, i) => sum + (r.score as number) * this.weights[i],
       0,
     );
     const mergedBreakdown: Record<string, number> = {};

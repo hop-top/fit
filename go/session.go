@@ -2,7 +2,6 @@ package fit
 
 import (
 	"context"
-	"math"
 	"time"
 
 	"github.com/google/uuid"
@@ -78,7 +77,7 @@ func (s *Session) Run(ctx context.Context, prompt string, contextMap map[string]
 		} else {
 			frontierMeta["error"] = err.Error()
 		}
-		partialReward := &Reward{Score: math.NaN(), Breakdown: map[string]float64{}}
+		partialReward := &Reward{Score: nil, Breakdown: map[string]float64{}, Metadata: map[string]any{"error": "frontier_failure"}}
 		partialTrace := &Trace{
 			ID:        uuid.New().String(),
 			SessionID: sessionID,
@@ -94,7 +93,7 @@ func (s *Session) Run(ctx context.Context, prompt string, contextMap map[string]
 	// Score
 	reward, err := s.Scorer.Score(output, contextMap)
 	if err != nil {
-		reward = &Reward{Score: math.NaN(), Breakdown: map[string]float64{}}
+		reward = &Reward{Score: nil, Breakdown: map[string]float64{}, Metadata: map[string]any{"error": "scorer_failure"}}
 	}
 
 	// Trace

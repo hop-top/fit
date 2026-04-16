@@ -48,12 +48,18 @@ and prints scores to stdout.`,
 					fmt.Fprintf(cmd.OutOrStdout(), "FAIL: %s: %v\n", tc.Prompt, err)
 					continue
 				}
-				totalScore += result.Reward.Score
+				if result.Reward.Score != nil {
+					totalScore += *result.Reward.Score
+				}
 				count++
 
+				scoreVal := 0.0
+				if result.Reward.Score != nil {
+					scoreVal = *result.Reward.Score
+				}
 				fmt.Fprintf(cmd.OutOrStdout(),
 					"score=%.2f domain=%s prompt=%q\n",
-					result.Reward.Score,
+					scoreVal,
 					result.Trace.Advice.Domain,
 					tc.Prompt,
 				)
@@ -124,7 +130,7 @@ type stubScorer struct{}
 
 func (s *stubScorer) Score(_ string, _ map[string]any) (*fit.Reward, error) {
 	return &fit.Reward{
-		Score:     0.5,
+		Score:     fit.Float64Ptr(0.5),
 		Breakdown: map[string]float64{"accuracy": 0.5, "relevance": 0.5},
 	}, nil
 }

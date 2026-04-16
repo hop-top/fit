@@ -105,8 +105,11 @@ func TestRewardParseJSON(t *testing.T) {
 	if err := loadJSON("reward-v1.json", &r); err != nil {
 		t.Fatalf("parse json: %v", err)
 	}
-	if r.Score < 0 || r.Score > 1 {
-		t.Errorf("score %f out of [0,1]", r.Score)
+	if r.Score == nil {
+		t.Fatal("score is nil, expected float value")
+	}
+	if *r.Score < 0 || *r.Score > 1 {
+		t.Errorf("score %f out of [0,1]", *r.Score)
 	}
 	if r.Breakdown["accuracy"] < 0 || r.Breakdown["accuracy"] > 1 {
 		t.Errorf("accuracy breakdown out of range")
@@ -129,8 +132,11 @@ func TestRewardRoundTripJSON(t *testing.T) {
 	if err := json.Unmarshal(out, &r2); err != nil {
 		t.Fatal(err)
 	}
-	if r2.Score != r.Score {
-		t.Errorf("round-trip score: %f != %f", r2.Score, r.Score)
+	if r2.Score == nil || r.Score == nil {
+		t.Fatal("score unexpectedly nil in round-trip")
+	}
+	if *r2.Score != *r.Score {
+		t.Errorf("round-trip score: %f != %f", *r2.Score, *r.Score)
 	}
 }
 

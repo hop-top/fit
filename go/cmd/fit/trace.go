@@ -123,15 +123,16 @@ func traceShowCmd() *cobra.Command {
 }
 
 // sanitizeNonFinite replaces NaN/Inf floats in the trace with JSON-safe
-// values so encoding/json does not error. Score is set to 0 with a
-// metadata flag; breakdown values are set to 0.
+// values so encoding/json does not error. Nil score is already JSON-safe.
+// Non-nil score with NaN/Inf is set to 0 with a metadata flag.
+// Breakdown NaN/Inf values are set to 0.
 func sanitizeNonFinite(t *fit.Trace) {
 	if t.Reward == nil {
 		return
 	}
 	r := t.Reward
-	if math.IsNaN(r.Score) || math.IsInf(r.Score, 0) {
-		r.Score = 0
+	if r.Score != nil && (math.IsNaN(*r.Score) || math.IsInf(*r.Score, 0)) {
+		r.Score = fit.Float64Ptr(0)
 		if r.Metadata == nil {
 			r.Metadata = make(map[string]any)
 		}

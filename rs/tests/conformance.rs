@@ -70,7 +70,8 @@ fn advice_round_trip_json() {
 fn reward_parse_json() {
     let json = load_json_str("reward-v1.json");
     let r = Reward::from_json(&json).expect("parse json");
-    assert!((r.score - 0.62).abs() < 1e-10);
+    let score = r.score.expect("score should be Some");
+    assert!((score - 0.62).abs() < 1e-10);
     let acc = r.breakdown.get("accuracy").expect("accuracy");
     assert!((acc - 0.7).abs() < 1e-10);
     assert!((r.breakdown.get("safety").unwrap() - 1.0).abs() < 1e-10);
@@ -79,7 +80,8 @@ fn reward_parse_json() {
 #[test]
 fn reward_score_in_range() {
     let r = Reward::from_json(&load_json_str("reward-v1.json")).expect("parse");
-    assert!(r.score >= 0.0 && r.score <= 1.0);
+    let score = r.score.expect("score should be Some");
+    assert!(score >= 0.0 && score <= 1.0);
     for v in r.breakdown.values() {
         assert!(*v >= 0.0 && *v <= 1.0);
     }
@@ -90,7 +92,7 @@ fn reward_round_trip_json() {
     let r = Reward::from_json(&load_json_str("reward-v1.json")).expect("parse");
     let out = r.to_json().expect("serialize");
     let r2 = Reward::from_json(&out).expect("re-parse");
-    assert!((r2.score - r.score).abs() < 1e-10);
+    assert!((r2.score.unwrap() - r.score.unwrap()).abs() < 1e-10);
 }
 
 // --- Trace conformance ---
@@ -102,7 +104,8 @@ fn trace_parse_yaml() {
     assert_eq!(t.id, "550e8400-e29b-41d4-a716-446655440000");
     assert_eq!(t.session_id, "sess_abc123");
     assert_eq!(t.advice.domain, "tax-compliance");
-    assert!((t.reward.score - 0.95).abs() < 1e-10);
+    let score = t.reward.score.expect("score should be Some");
+    assert!((score - 0.95).abs() < 1e-10);
 }
 
 #[test]

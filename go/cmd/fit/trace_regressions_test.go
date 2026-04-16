@@ -86,14 +86,14 @@ func TestTraceShowJSONSanitizesNaN(t *testing.T) {
 		SessionID: "s1",
 		Timestamp: "2025-01-01T00:00:00Z",
 		Reward: &fit.Reward{
-			Score:     math.NaN(),
+			Score:     fit.Float64Ptr(math.NaN()),
 			Breakdown: map[string]float64{"accuracy": math.Inf(1), "safety": 0.9},
 		},
 	}
 	sanitizeNonFinite(&trace)
 
 	// Score should be 0, not NaN.
-	if trace.Reward.Score != 0 {
+	if trace.Reward.Score == nil || *trace.Reward.Score != 0 {
 		t.Errorf("Score = %v, want 0", trace.Reward.Score)
 	}
 
@@ -126,13 +126,13 @@ func TestTraceShowJSONSanitizesInf(t *testing.T) {
 		SessionID: "s2",
 		Timestamp: "2025-01-01T00:00:00Z",
 		Reward: &fit.Reward{
-			Score:     math.Inf(-1),
+			Score:     fit.Float64Ptr(math.Inf(-1)),
 			Breakdown: map[string]float64{},
 		},
 	}
 	sanitizeNonFinite(&trace)
 
-	if trace.Reward.Score != 0 {
+	if trace.Reward.Score == nil || *trace.Reward.Score != 0 {
 		t.Errorf("Score = %v, want 0", trace.Reward.Score)
 	}
 	if trace.Reward.Metadata["scorer_error"] != "non-finite score sanitized to 0" {
@@ -167,14 +167,14 @@ func TestTraceShowJSONFiniteUntouched(t *testing.T) {
 		SessionID: "s4",
 		Timestamp: "2025-01-01T00:00:00Z",
 		Reward: &fit.Reward{
-			Score:     0.75,
+			Score:     fit.Float64Ptr(0.75),
 			Breakdown: map[string]float64{"a": 0.5},
 			Metadata:  map[string]any{"scorer": "test"},
 		},
 	}
 	sanitizeNonFinite(&trace)
 
-	if trace.Reward.Score != 0.75 {
+	if trace.Reward.Score == nil || *trace.Reward.Score != 0.75 {
 		t.Errorf("Score = %v, want 0.75", trace.Reward.Score)
 	}
 	if trace.Reward.Breakdown["a"] != 0.5 {

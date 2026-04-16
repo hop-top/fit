@@ -53,14 +53,14 @@ class Session:
             output = ""
             frontier_meta = {"error": str(exc)}
 
-        # Score (skip when frontier failed — use NaN reward)
+        # Score (skip when frontier failed — use null reward per reward-schema-v1)
         if frontier_failed:
-            reward = Reward(score=float("nan"), breakdown={})
+            reward = Reward(score=None, breakdown={})
         else:
             try:
                 reward = self._scorer.score(output, ctx)
             except Exception:
-                reward = Reward(score=float("nan"), breakdown={})
+                reward = Reward(score=None, breakdown={})
 
         trace = Trace(
             id=str(uuid.uuid4()),

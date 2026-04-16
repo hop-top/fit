@@ -1,8 +1,9 @@
 package fit
 
 import (
+	"bytes"
 	"context"
-	"math"
+	"encoding/json"
 	"testing"
 )
 
@@ -31,7 +32,7 @@ type stubScorer struct {
 }
 
 func (s *stubScorer) Score(_ string, _ map[string]any) (*Reward, error) {
-	return &Reward{Score: s.score, Breakdown: map[string]float64{}}, nil
+	return &Reward{Score: Float64Ptr(s.score), Breakdown: map[string]float64{}}, nil
 }
 
 type errorAdvisor struct{}
@@ -137,7 +138,7 @@ type contextWritingScorer struct {
 func (c *contextWritingScorer) Score(_ string, ctx map[string]any) (*Reward, error) {
 	c.receivedContext = true
 	ctx["_written"] = true // would panic if ctx is nil
-	return &Reward{Score: 0.5, Breakdown: map[string]float64{}}, nil
+	return &Reward{Score: Float64Ptr(0.5), Breakdown: map[string]float64{}}, nil
 }
 
 // PR#11 regression: adapter failure must produce a partial trace, not nil.
@@ -166,9 +167,9 @@ func TestAdapterFailureProducesPartialTrace(t *testing.T) {
 		t.Fatal("result.Trace is nil, expected partial trace")
 	}
 
-	// Reward score must be NaN.
-	if !math.IsNaN(result.Reward.Score) {
-		t.Errorf("reward.Score = %v, want NaN", result.Reward.Score)
+	// Reward score must be nil (null in JSON, per reward-schema-v1).
+	if result.Reward.Score != nil {
+		t.Errorf("reward.Score = %v, want nil", result.Reward.Score)
 	}
 
 	// Frontier must contain the error.
@@ -189,3 +190,70 @@ func (e *errorAdapter) Call(_ context.Context, _ string, _ *Advice) (string, map
 }
 
 var errAdapterFailed = &simpleError{"adapter failed"}
+
+// PR#15 regression: Reward with nil Score must serialize to JSON null.
+func TestRewardNilScoreSerializesNull(t *testing.T) {
+	r := &Reward{Score: nil, Breakdown: map[string]float64{}}
+	data, err := json.Marshal(r)
+	if err != nil {
+		t.Fatalf("json.Marshal: %v", err)
+	}
+	if !bytes.Contains(data, []byte(`"score":null`)) {
+		t.Errorf("JSON = %s, want score:null", data)
+	}
+	// Round-trip must parse back to nil
+	var r2 Reward
+	if err := json.Unmarshal(data, &r2); err != nil {
+		t.Fatalf("json.Unmarshal: %v", err)
+	}
+	if r2.Score != nil {
+		t.Errorf("round-trip Score = %v, want nil", r2.Score)
+	}
+}
+
+// PR#15 regression: Reward with numeric Score must round-trip through JSON.
+func TestRewardNumericScoreRoundTrip(t *testing.T) {
+	r := &Reward{Score: Float64Ptr(0.75), Breakdown: map[string]float64{"acc": 0.7}}
+	data, err := json.Marshal(r)
+	if err != nil {
+		t.Fatalf("json.Marshal: %v", err)
+	}
+	if !bytes.Contains(data, []byte(`"score":0.75`)) {
+		t.Errorf("JSON = %s, want score:0.75", data)
+	}
+	var r2 Reward
+	if err := json.Unmarshal(data, &r2); err != nil {
+		t.Fatalf("json.Unmarshal: %v", err)
+	}
+	if r2.Score == nil || *r2.Score != 0.75 {
+		t.Errorf("round-trip Score = %v, want 0.75", r2.Score)
+	}
+}
+
+// PR#15 regression: scorer failure must produce nil score with error metadata.
+func TestScorerFailureProducesNilScore(t *testing.T) {
+	session := &Session{
+		Advisor: &stubAdvisor{advice: &Advice{Domain: "test", Version: "1.0"}},
+		Adapter: &stubAdapter{output: "out"},
+		Scorer:  &errorScorer{},
+		Config:  SessionConfig{Mode: "one-shot"},
+	}
+
+	result, err := session.Run(context.Background(), "test", nil)
+	// Session should not return an error (scorer failure is handled).
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result.Reward.Score != nil {
+		t.Errorf("Score = %v, want nil", result.Reward.Score)
+	}
+	if result.Reward.Metadata == nil || result.Reward.Metadata["error"] != "scorer_failure" {
+		t.Errorf("Metadata = %v, want error=scorer_failure", result.Reward.Metadata)
+	}
+}
+
+type errorScorer struct{}
+
+func (e *errorScorer) Score(_ string, _ map[string]any) (*Reward, error) {
+	return nil, &simpleError{"scorer failed"}
+}

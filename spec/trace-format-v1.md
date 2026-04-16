@@ -33,9 +33,9 @@ frontier:
     completion_tokens: int
     total_tokens: int
 
-# Reward scoring
+# Reward scoring (reward-schema-v1)
 reward:
-  score: float
+  score: float | null   # null on failure (frontier/scorer error)
   breakdown:
     accuracy: float
     relevance: float

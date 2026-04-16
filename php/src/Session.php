@@ -33,23 +33,24 @@ class Session
             $advice = new Advice('unknown', '', 0.0);
         }
 
+        $adapterFailed = false;
         try {
             [$output, $frontierMeta] = $this->adapter->call($prompt, $advice);
         } catch (\Throwable $e) {
+            $adapterFailed = true;
             $output = '';
             $frontierMeta = ['error' => $e->getMessage()];
         }
 
-        try {
-            $reward = $this->scorer->score($output, $context);
-        } catch (\Throwable) {
-            $reward = new Reward(NAN, []);
-        }
-
-        // When adapter failed (output empty + error in frontier),
-        // skip scorer and use NAN reward directly.
-        if ($output === '' && isset($frontierMeta['error'])) {
-            $reward = new Reward(NAN, []);
+        // When adapter failed, skip scorer and use null reward (reward-schema-v1).
+        if ($adapterFailed) {
+            $reward = new Reward(null, []);
+        } else {
+            try {
+                $reward = $this->scorer->score($output, $context);
+            } catch (\Throwable) {
+                $reward = new Reward(null, []);
+            }
         }
 
         $trace = new Trace(

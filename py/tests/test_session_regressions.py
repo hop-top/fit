@@ -4,11 +4,12 @@ Includes:
 - Session context shape bug (flattened context dict)
 - Trace serialization dropping advice.version
 - Adapter failure producing no trace (PR#11)
+- NaN→None for failure rewards (PR#15)
+- Trace serialization dropping reward.metadata (PR#15)
 """
 
 from __future__ import annotations
 
-import math
 from typing import Any
 
 from fit.advisor import Advisor
@@ -139,7 +140,9 @@ def test_adapter_failure_produces_partial_trace():
 
     Before fix: session.run() propagated the exception with no trace.
     Spec requires frontier failures to still produce a trace with
-    partial fields (NaN reward, frontier error info).
+    partial fields (null reward score, frontier error info).
+
+    PR#15: changed from NaN to None per reward-schema-v1.
     """
     advisor = CaptureAdvisor()
     adapter = ErrorAdapter()
@@ -154,9 +157,107 @@ def test_adapter_failure_produces_partial_trace():
     # Trace must be present
     assert trace is not None
 
-    # Reward score must be NaN
-    assert math.isnan(reward.score)
+    # Reward score must be None per reward-schema-v1 (not NaN)
+    assert reward.score is None
 
     # Frontier must contain the error
     assert "error" in trace.frontier
     assert "adapter failed" in trace.frontier["error"]
+
+
+class ErrorScorer:
+    """Scorer whose score() always raises RuntimeError."""
+
+    def score(self, output: str, context: dict[str, Any]) -> Reward:
+        raise RuntimeError("scorer exploded")
+
+
+def test_scorer_failure_produces_null_reward():
+    """Regression: scorer failure must produce null score (not NaN).
+
+    PR#15: reward-schema-v1 specifies score: null on failure.
+    """
+    advisor = CaptureAdvisor()
+    adapter = FakeAdapter()
+    scorer = ErrorScorer()
+    session = Session(advisor=advisor, adapter=adapter, scorer=scorer)
+
+    output, reward, trace = session.run("test")
+
+    # Adapter succeeded, so output is non-empty
+    assert output == "test"
+
+    # Reward score must be None per reward-schema-v1
+    assert reward.score is None
+
+
+def test_trace_to_dict_includes_reward_metadata():
+    """Regression: _trace_to_dict() dropped reward.metadata.
+
+    PR#15: reward object in serialized trace must include metadata
+    alongside score and breakdown.
+    """
+    advice = Advice(
+        domain="test",
+        steering_text="steer",
+        confidence=0.9,
+    )
+    reward = Reward(
+        score=0.95,
+        breakdown={"accuracy": 1.0},
+        metadata={"model_version": "2.1", "latency_ms": 120},
+    )
+    trace = Trace(
+        id="test-id",
+        session_id="sess-1",
+        timestamp="2026-04-15T10:00:00Z",
+        input={"prompt": "hello", "context": {}},
+        advice=advice,
+        frontier={"model": "stub"},
+        reward=reward,
+    )
+
+    d = _trace_to_dict(trace)
+
+    assert "metadata" in d["reward"], (
+        "reward dict missing 'metadata' key"
+    )
+    assert d["reward"]["metadata"] == {"model_version": "2.1", "latency_ms": 120}
+
+
+def test_trace_null_score_yaml_roundtrip():
+    """Regression: trace with null score must round-trip through YAML.
+
+    PR#15: null score must be parseable after YAML serialization.
+    """
+    import tempfile
+    from pathlib import Path
+
+    from fit.trace import TraceWriter, TraceReader
+
+    advice = Advice(
+        domain="test",
+        steering_text="steer",
+        confidence=0.9,
+    )
+    reward = Reward(score=None, breakdown={})
+    trace = Trace(
+        id="null-score-id",
+        session_id="sess-null",
+        timestamp="2026-04-16T10:00:00Z",
+        input={"prompt": "test", "context": {}},
+        advice=advice,
+        frontier={"error": "adapter failed"},
+        reward=reward,
+    )
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        writer = TraceWriter(tmpdir)
+        writer.write(trace, step=1)
+
+        reader = TraceReader(tmpdir)
+        loaded = reader.read("sess-null", step=1)
+
+        # score must deserialize as None (not NaN string)
+        assert loaded["reward"]["score"] is None
+        assert loaded["reward"]["breakdown"] == {}
