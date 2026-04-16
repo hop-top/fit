@@ -433,3 +433,39 @@ class TestPR31LoadBatchNonTraceFilterRegression:
         assert batch_count == 0, (
             f"load_batch must also filter non-trace, got {batch_count}"
         )
+
+
+class TestPR32ParseRawNonDictFieldsRegression:
+    """Regression: _parse_raw() must handle non-dict field values.
+
+    PR #32 review item — _parse_raw() defensively normalizes non-dict
+    field values (None, str, int, etc.) to empty dicts before calling
+    .get() on them. This prevents AttributeError crashes when trace
+    data has input: null, advice: "string", frontier: null, etc.
+    """
+
+    def test_parse_raw_null_input_returns_defaults(self) -> None:
+        """input: null must produce empty defaults, not crash."""
+        from fit.training.tracer import _parse_raw
+
+        rec = _parse_raw({"input": None, "frontier": {}})
+        assert rec.prompt == ""
+        assert rec.context == {}
+
+    def test_parse_raw_string_advice_returns_defaults(self) -> None:
+        """advice: "not a dict" must produce empty advice defaults."""
+        from fit.training.tracer import _parse_raw
+
+        rec = _parse_raw({"input": {}, "advice": "not a dict"})
+        assert rec.advice_text == ""
+        assert rec.advice_domain == "unknown"
+
+    def test_parse_raw_null_frontier_and_reward_returns_defaults(self) -> None:
+        """frontier: null and reward: null must produce empty defaults."""
+        from fit.training.tracer import _parse_raw
+
+        rec = _parse_raw({"input": {}, "frontier": None, "reward": None})
+        assert rec.frontier_output == ""
+        assert rec.frontier_model == ""
+        assert rec.reward_score is None
+        assert rec.reward_breakdown == {}

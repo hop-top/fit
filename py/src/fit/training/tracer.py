@@ -37,26 +37,42 @@ def _parse_raw(raw: dict[str, Any]) -> TraceRecord:
     """Parse a raw trace dict into a normalized TraceRecord.
 
     Handles traces from any fit port — all share the same schema.
+    Defensively normalizes non-dict field values to empty dicts.
     """
-    inp = raw.get("input", {})
-    advice = raw.get("advice", {})
-    frontier = raw.get("frontier", {})
-    reward = raw.get("reward", {})
+    inp_raw = raw.get("input", {})
+    advice_raw = raw.get("advice", {})
+    frontier_raw = raw.get("frontier", {})
+    reward_raw = raw.get("reward", {})
+    metadata_raw = raw.get("metadata", {})
+
+    inp = inp_raw if isinstance(inp_raw, dict) else {}
+    advice = advice_raw if isinstance(advice_raw, dict) else {}
+    frontier = frontier_raw if isinstance(frontier_raw, dict) else {}
+    reward = reward_raw if isinstance(reward_raw, dict) else {}
+    metadata = metadata_raw if isinstance(metadata_raw, dict) else {}
+
+    context = inp.get("context", {})
+    if not isinstance(context, dict):
+        context = {}
+
+    reward_breakdown = reward.get("breakdown", {})
+    if not isinstance(reward_breakdown, dict):
+        reward_breakdown = {}
 
     return TraceRecord(
         id=raw.get("id", ""),
         session_id=raw.get("session_id", ""),
         timestamp=raw.get("timestamp", ""),
         prompt=inp.get("prompt", ""),
-        context=inp.get("context", {}),
+        context=context,
         advice_text=advice.get("steering_text", ""),
         advice_domain=advice.get("domain", "unknown"),
         advice_confidence=float(advice.get("confidence", 0.0)),
         frontier_output=frontier.get("output", ""),
         frontier_model=frontier.get("model", ""),
         reward_score=reward.get("score"),
-        reward_breakdown=reward.get("breakdown", {}),
-        metadata=raw.get("metadata", {}),
+        reward_breakdown=reward_breakdown,
+        metadata=metadata,
     )
 
 

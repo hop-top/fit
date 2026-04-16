@@ -164,3 +164,40 @@ class TestDatasetBuilder:
         for ex in ds:
             assert ex.context
             assert isinstance(ex.reward, float)
+
+
+class TestPR32SplitValRatioZeroRegression:
+    """Regression: FitDataset.split(val_ratio=0.0) must produce no val set.
+
+    PR #32 review item — split() uses
+        val_count = max(1, int(len(indices) * val_ratio))
+    which means val_ratio=0.0 still allocates 1 validation example
+    for any dataset with len >= 2. This violates expected semantics:
+    val_ratio=0.0 should mean "no validation split".
+    These tests prove the bug (they FAIL on current code).
+    """
+
+    def test_val_ratio_zero_produces_no_val_set(self) -> None:
+        """val_ratio=0.0 must yield len(val) == 0.
+
+        Current code gives len(val) == 1 due to max(1, ...)
+        on line 37 of dataset.py.
+        """
+        examples = [TrainingExample(f"ctx{i}", f"adv{i}", float(i) / 10) for i in range(10)]
+        train, val = FitDataset(examples).split(val_ratio=0.0)
+        assert len(val) == 0, (
+            f"Expected 0 val examples with val_ratio=0.0, got {len(val)} — "
+            "max(1, ...) in split() forces >=1 val example"
+        )
+
+    def test_val_ratio_zero_all_in_train(self) -> None:
+        """val_ratio=0.0 must keep all 10 examples in train.
+
+        Current code gives len(train) == 9 because 1 goes to val.
+        """
+        examples = [TrainingExample(f"ctx{i}", f"adv{i}", float(i) / 10) for i in range(10)]
+        train, val = FitDataset(examples).split(val_ratio=0.0)
+        assert len(train) == 10, (
+            f"Expected 10 train examples with val_ratio=0.0, got {len(train)} — "
+            "max(1, ...) steals 1 example for val"
+        )

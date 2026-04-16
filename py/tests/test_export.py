@@ -250,3 +250,58 @@ class TestPR31SafetensorsTorchImportRegression:
             "try/except ImportError with a clear message. "
             f"Block text:\n{block_text}"
         )
+
+
+# ---------------------------------------------------------------------------
+# PR #32 regression: to_onnx ImportError message falsely claims optimum is
+# required, but the code has a fallback path that works without it.
+# ---------------------------------------------------------------------------
+
+
+class TestPR32OnnxErrorMsgOptimumOptionalRegression:
+    """to_onnx() preflight error must present optimum as optional.
+
+    The preflight ImportError (raised when torch/transformers are missing)
+    must say only "pip install torch transformers" and mention optimum
+    as an optional optimization, not as a required dependency.
+    The code has a fallback via _onnx_export_torch that works without
+    optimum, so listing it as required was misleading.
+    """
+
+    def test_onnx_error_message_not_requiring_optimum(self) -> None:
+        import inspect
+
+        source = inspect.getsource(ModelExporter.to_onnx)
+
+        # Locate the preflight ImportError block
+        preflight_msg_lines: list[str] = []
+        in_raise = False
+        for line in source.splitlines():
+            stripped = line.strip()
+            if 'raise ImportError' in stripped:
+                in_raise = True
+                preflight_msg_lines.append(stripped)
+                continue
+            if in_raise:
+                if stripped.startswith('"') or stripped.startswith("'"):
+                    preflight_msg_lines.append(stripped)
+                else:
+                    in_raise = False
+
+        preflight_msg = " ".join(preflight_msg_lines)
+
+        # Must NOT present optimum as required
+        assert "pip install torch transformers optimum" not in preflight_msg, (
+            "Preflight ImportError must not list 'optimum' as a required "
+            "dependency. The _onnx_export_torch fallback works without it. "
+            f"Got: {preflight_msg}"
+        )
+
+        # Should mention optimum as optional
+        assert "Optionally" in preflight_msg or "optionally" in preflight_msg, (
+            "Preflight ImportError should mention optimum as optional. "
+            f"Got: {preflight_msg}"
+        )
+
+        # Fallback path must exist
+        assert "_onnx_export_torch" in source

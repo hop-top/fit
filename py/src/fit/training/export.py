@@ -105,7 +105,8 @@ class ModelExporter:
         except ImportError as exc:
             raise ImportError(
                 "ONNX export requires torch and transformers. "
-                "Install with: pip install torch transformers optimum"
+                "Install with: pip install torch transformers. "
+                "Optionally install optimum for the optimized export path."
             ) from exc
 
         try:

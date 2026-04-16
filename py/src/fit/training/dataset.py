@@ -34,9 +34,9 @@ class FitDataset:
         rng = random.Random(seed)
         indices = list(range(len(self._examples)))
         rng.shuffle(indices)
-        val_count = max(1, int(len(indices) * val_ratio))
+        val_count = int(len(indices) * val_ratio)
         if val_count >= len(indices) and len(indices) > 0:
-            val_count = max(0, len(indices) - 1)
+            val_count = len(indices) - 1
         val_idx = set(indices[:val_count])
 
         train = [e for i, e in enumerate(self._examples) if i not in val_idx]
