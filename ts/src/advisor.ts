@@ -26,6 +26,7 @@ export class RemoteAdvisor implements Advisor {
       confidence: data.confidence,
       constraints: data.constraints ?? [],
       metadata: data.metadata ?? {},
+      version: data.version ?? "1.0",
     };
   }
 

@@ -28,6 +28,14 @@ class CompositeScorer implements RewardScorerInterface
                 ? []
                 : array_fill(0, count($scorers), 1.0 / count($scorers)))
             : $weights;
+
+        if (!empty($weights) && count($weights) !== count($scorers)) {
+            throw new \InvalidArgumentException(sprintf(
+                'weights/scorers length mismatch: %d scorers but %d weights',
+                count($scorers),
+                count($weights),
+            ));
+        }
     }
 
     public function score(string $output, array $context): Reward

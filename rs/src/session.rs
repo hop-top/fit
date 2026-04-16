@@ -267,6 +267,11 @@ where
         let mut results = vec![];
         let mut current_prompt = prompt.to_string();
 
+        if self.config.max_steps == 0 {
+            self.state = SessionState::Done;
+            return Ok(vec![]);
+        }
+
         loop {
             let result = self
                 .run_with_session_id(&current_prompt, context.clone(), &session_id)

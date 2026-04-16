@@ -27,7 +27,6 @@ class RemoteAdvisor(Advisor):
 
     def generate_advice(self, context: dict[str, Any]) -> Advice:
         import httpx
-        import json
 
         resp = httpx.post(
             f"{self._endpoint}/advise",

@@ -51,7 +51,10 @@ pub struct CompositeScorer {
 }
 
 impl CompositeScorer {
-    pub fn new(scorers: Vec<Box<dyn RewardScorer>>, weights: Vec<f64>) -> Self {
+    pub fn new(
+        scorers: Vec<Box<dyn RewardScorer>>,
+        weights: Vec<f64>,
+    ) -> Result<Self, FitError> {
         let weights = if scorers.is_empty() {
             vec![]
         } else if weights.is_empty() {
@@ -60,11 +63,20 @@ impl CompositeScorer {
         } else {
             weights
         };
-        Self { scorers, weights }
+
+        if weights.len() != scorers.len() {
+            return Err(FitError::Scoring(format!(
+                "weights/scorers length mismatch: {} scorers but {} weights",
+                scorers.len(),
+                weights.len(),
+            )));
+        }
+
+        Ok(Self { scorers, weights })
     }
 
     /// Convenience: create equal-weight composite from dimension names.
-    pub fn from_dimensions(names: &[&str]) -> Self {
+    pub fn from_dimensions(names: &[&str]) -> Result<Self, FitError> {
         let scorers: Vec<Box<dyn RewardScorer>> = names
             .iter()
             .map(|n| Box::new(DimensionScorer::new(n)) as Box<dyn RewardScorer>)

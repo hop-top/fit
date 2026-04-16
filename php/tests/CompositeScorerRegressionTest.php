@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Hop\Fit\Tests;
 
 use Hop\Fit\CompositeScorer;
+use Hop\Fit\DimensionScorer;
 use Hop\Fit\Reward;
 use Hop\Fit\RewardScorerInterface;
 use PHPUnit\Framework\TestCase;
@@ -62,5 +63,41 @@ class CompositeScorerRegressionTest extends TestCase
         // Before fix: only first scorer's breakdown was kept
         $this->assertArrayHasKey('accuracy', $result->breakdown);
         $this->assertArrayHasKey('safety', $result->breakdown);
+    }
+
+    /**
+     * Regression: CompositeScorer must reject weights/scorers length mismatch.
+     *
+     * Before fix: score() silently used zip-like behavior, ignoring
+     * mismatched weights or producing undefined offset errors.
+     */
+    public function testRejectsLengthMismatch(): void
+    {
+        $scorers = [
+            new DimensionScorer('a'),
+            new DimensionScorer('b'),
+        ];
+
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('mismatch');
+
+        new CompositeScorer($scorers, [0.5, 0.3, 0.2]);
+    }
+
+    /**
+     * Regression: weights shorter than scorers must also be rejected.
+     */
+    public function testRejectsShortWeights(): void
+    {
+        $scorers = [
+            new DimensionScorer('a'),
+            new DimensionScorer('b'),
+            new DimensionScorer('c'),
+        ];
+
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('mismatch');
+
+        new CompositeScorer($scorers, [0.5, 0.3]);
     }
 }

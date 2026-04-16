@@ -121,3 +121,31 @@ async fn multi_turn_resets_step_counter() {
         "different multi-turn runs must have different session_ids"
     );
 }
+
+/// Regression: run_multi_turn with max_steps=0 must return empty results.
+///
+/// Before fix: the loop { ... if done { break; } } pattern executed
+/// at least one iteration before checking the step limit. With
+/// max_steps=0, the session would produce 1 trace instead of 0.
+#[tokio::test]
+async fn multi_turn_zero_steps_returns_empty() {
+    let advisor = fit::StubAdvisor::new("stub");
+    let adapter = EchoAdapter;
+    let scorer = LowScorer;
+
+    let config = SessionConfig {
+        mode: SessionMode::MultiTurn,
+        max_steps: 0,
+        reward_threshold: 1.0,
+    };
+
+    let mut session = Session::new(advisor, adapter, scorer).with_config(config);
+    let results = session
+        .run_multi_turn("test prompt", HashMap::new())
+        .await
+        .expect("zero-step should succeed");
+
+    assert!(results.is_empty(), "max_steps=0 should produce no results");
+    // Session should end in Done state
+    assert_eq!(*session.state(), fit::SessionState::Done);
+}
