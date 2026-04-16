@@ -23,34 +23,17 @@ class OllamaAdapter(Adapter):
 
     def call(self, prompt: str, advice: Advice) -> tuple[str, dict[str, Any]]:
         system_prompt = f"[Advisor Guidance]\n{advice.steering_text}"
-
-        if self._http_client is not None:
-            client = self._http_client
-            resp = client.post(
-                f"{self._base_url}/api/chat",
-                json={
-                    "model": self._model,
-                    "messages": [
-                        {"role": "system", "content": system_prompt},
-                        {"role": "user", "content": prompt},
-                    ],
-                    "stream": False,
-                },
-                timeout=60.0,
-            )
-        else:
-            resp = httpx.post(
-                f"{self._base_url}/api/chat",
-                json={
-                    "model": self._model,
-                    "messages": [
-                        {"role": "system", "content": system_prompt},
-                        {"role": "user", "content": prompt},
-                    ],
-                    "stream": False,
-                },
-                timeout=60.0,
-            )
+        payload = {
+            "model": self._model,
+            "messages": [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": prompt},
+            ],
+            "stream": False,
+        }
+        url = f"{self._base_url}/api/chat"
+        client = self._http_client or httpx
+        resp = client.post(url, json=payload, timeout=60.0)
         resp.raise_for_status()
         data = resp.json()
 

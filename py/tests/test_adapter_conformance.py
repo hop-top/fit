@@ -115,7 +115,7 @@ class TestAdapterMetadataShape:
 
     @pytest.fixture(params=ADAPTER_PROVIDERS, ids=["anthropic", "openai", "ollama"])
     def adapter_result(self, request: pytest.FixtureRequest) -> tuple[str, dict[str, Any]]:
-        provider, cls = request.param
+        provider, _cls = request.param
         return _call_provider(provider)
 
     def test_metadata_has_required_keys(self, adapter_result: tuple) -> None:
@@ -173,7 +173,7 @@ class TestUsageStructure:
 
     @pytest.fixture(params=ADAPTER_PROVIDERS, ids=["anthropic", "openai", "ollama"])
     def adapter_result(self, request: pytest.FixtureRequest) -> tuple[str, dict[str, Any]]:
-        provider, cls = request.param
+        provider, _cls = request.param
         return _call_provider(provider)
 
     def test_usage_has_exactly_three_keys(self, adapter_result: tuple) -> None:

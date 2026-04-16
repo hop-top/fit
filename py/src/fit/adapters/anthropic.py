@@ -50,7 +50,9 @@ class AnthropicAdapter(Adapter):
             messages=[{"role": "user", "content": prompt}],
         )
 
-        output = response.content[0].text
+        output = "".join(
+            block.text for block in response.content if hasattr(block, "text")
+        )
         metadata = {
             "model": response.model,
             "provider": "anthropic",

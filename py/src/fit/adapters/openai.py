@@ -51,7 +51,7 @@ class OpenAIAdapter(Adapter):
             ],
         )
 
-        output = response.choices[0].message.content
+        output = response.choices[0].message.content or ""
         metadata = {
             "model": response.model,
             "provider": "openai",
