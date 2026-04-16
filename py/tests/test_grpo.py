@@ -218,3 +218,48 @@ class TestComputeRewardStats:
         stats = _compute_reward_stats([0.5])
         assert stats["mean"] == 0.5
         assert stats["std"] == 0.0
+
+
+class TestPR30ReviewRegressions:
+    """Regression tests for PR #30 review items.
+
+    Item 1: Unused TrainingExample import in grpo.py (line 17).
+    Item 2: Unconditional numpy import in _train_simplified (line 189).
+    """
+
+    def test_grpo_does_not_reexport_training_example(self) -> None:
+        """TrainingExample must not be accessible via fit.training.grpo.
+
+        PR #30 review item 1: grpo.py imports TrainingExample from
+        .dataset but never uses it (F401 lint). After the fix removes
+        that import, accessing TrainingExample through the grpo module
+        should fail.
+        """
+        import fit.training.grpo as grpo_mod
+
+        assert not hasattr(grpo_mod, "TrainingExample"), (
+            "TrainingExample leaked into fit.training.grpo namespace -- "
+            "remove the unused import from grpo.py"
+        )
+
+    def test_simplified_training_no_numpy_import(self) -> None:
+        """_train_simplified must not import numpy.
+
+        PR #30 review item 2: _train_simplified had `import numpy as np`
+        but numpy is not a declared dependency. Reading the source
+        directly avoids needing torch in the test environment.
+        """
+        import inspect
+
+        from fit.training.grpo import GRPOTrainer
+
+        source = inspect.getsource(GRPOTrainer._train_simplified)
+
+        assert "import numpy" not in source, (
+            "_train_simplified still imports numpy -- "
+            "remove the unused numpy dependency"
+        )
+        assert "import numpy as np" not in source, (
+            "_train_simplified still imports numpy as np -- "
+            "remove the unused numpy dependency"
+        )

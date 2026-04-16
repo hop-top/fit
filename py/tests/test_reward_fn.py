@@ -191,3 +191,41 @@ class TestParseScoreBareInteger:
 
     def test_mixed_text_with_bare_integer(self) -> None:
         assert _parse_score("I'd give it a 7 out of 10") == pytest.approx(0.7)
+
+
+class TestPR30ParseScoreRegressions:
+    """PR #30 review item 3 — _parse_score division-by-zero and unclamped
+    val/10.0 branches.
+
+    The prefixed/bare fraction branches divide by the denominator without
+    guarding against zero, so "5/0" raises ZeroDivisionError. The
+    val/10.0 branches (prefixed integer >1.0 and bare number >1.0)
+    never clamp, so values >10 return scores >1.0.
+
+    These tests FAIL on current code until _parse_score is fixed.
+    """
+
+    def test_division_by_zero_prefixed_fraction(self) -> None:
+        """'Score: 5/0' must not raise and must return a value in [0,1]."""
+        score = _parse_score("Score: 5/0")
+        assert 0.0 <= score <= 1.0
+
+    def test_division_by_zero_bare_fraction(self) -> None:
+        """'5/0' must not raise and must return a value in [0,1]."""
+        score = _parse_score("5/0")
+        assert 0.0 <= score <= 1.0
+
+    def test_large_integer_above_one_scaled(self) -> None:
+        """'Score: 15' -> 15/10 = 1.5; must be clamped to [0,1]."""
+        score = _parse_score("Score: 15")
+        assert 0.0 <= score <= 1.0, f"got {score}, outside [0.0, 1.0]"
+
+    def test_bare_large_integer(self) -> None:
+        """'15' -> 15/10 = 1.5; must be clamped to [0,1]."""
+        score = _parse_score("15")
+        assert 0.0 <= score <= 1.0, f"got {score}, outside [0.0, 1.0]"
+
+    def test_score_one_hundred_clamped(self) -> None:
+        """'Score: 100' -> 100/10 = 10.0; must be clamped to [0,1]."""
+        score = _parse_score("Score: 100")
+        assert 0.0 <= score <= 1.0, f"got {score}, outside [0.0, 1.0]"

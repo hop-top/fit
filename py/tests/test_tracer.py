@@ -325,3 +325,46 @@ class TestDetectFormatYml:
         (tmp_path / "step-001.yaml").touch()
         (tmp_path / "step-002.yml").touch()
         assert _detect_format(tmp_path) == "yaml"
+
+
+class TestPR30YamlDirDocstringRegression:
+    """PR #30 review item 4 — load_yaml_dir docstring says step-NNN.yaml
+    pattern but implementation accepts ANY yaml with 'input' or 'frontier'
+    keys (rglob('*.y*ml') with no filename filter).
+
+    These tests document the current behavior mismatch. When the fix
+    tightens the loader to enforce the step-NNN pattern, update
+    test_non_step_pattern_file_loaded to assert NOT loaded.
+    """
+
+    def test_non_step_pattern_file_loaded(self, tmp_path: Path) -> None:
+        """Files NOT matching step-NNN pattern ARE loaded (proves mismatch).
+
+        A file named 'other.yaml' with valid trace content gets ingested
+        even though the docstring says only step-NNN files should be.
+        When the fix enforces the pattern, flip this to assert count == 0.
+        """
+        session_dir = tmp_path / "sess_docstring"
+        session_dir.mkdir()
+        (session_dir / "other.yaml").write_text(
+            yaml.safe_dump(SAMPLE_TRACE, default_flow_style=False),
+            encoding="utf-8",
+        )
+        ingester = TraceIngester().load_yaml_dir(tmp_path)
+        # Current behavior: non-step file IS loaded (docstring mismatch)
+        assert ingester.count() == 1, (
+            "Expected 1 — current code loads non-step-named yaml files. "
+            "If this fails, the loader was tightened to match the docstring."
+        )
+
+    def test_step_pattern_file_loaded(self, tmp_path: Path) -> None:
+        """step-NNN.yaml with valid trace must always be loaded."""
+        session_dir = tmp_path / "sess_happy"
+        session_dir.mkdir()
+        (session_dir / "step-001.yaml").write_text(
+            yaml.safe_dump(SAMPLE_TRACE, default_flow_style=False),
+            encoding="utf-8",
+        )
+        ingester = TraceIngester().load_yaml_dir(tmp_path)
+        assert ingester.count() == 1
+        assert ingester.to_trace_records()[0].id == "test-001"
