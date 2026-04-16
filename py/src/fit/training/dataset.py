@@ -59,7 +59,7 @@ class FitDataset:
     def reward_stats(self) -> dict[str, float]:
         """Compute reward statistics over the dataset."""
         if not self._examples:
-            return {"mean": 0.0, "std": 0.0, "min": 0.0, "max": 0.0}
+            return {"mean": 0.0, "std": 0.0, "min": 0.0, "max": 0.0, "count": 0.0}
         rewards = [e.reward for e in self._examples]
         n = len(rewards)
         mean = sum(rewards) / n

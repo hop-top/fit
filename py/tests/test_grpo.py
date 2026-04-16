@@ -98,6 +98,109 @@ class TestGRPOTrainer:
         assert trainer._shape_reward(0.5) == 0.5
 
 
+class TestRewardFnIndexingRegression:
+    """Regression: reward_fn closure must map completions to examples correctly.
+
+    PR #29 review item 5 — the current code uses
+    `enumerate(range(len(completions)))` with separate i/j indices.
+    This test reproduces the exact indexing logic from grpo.py lines
+    136-145 to guarantee that simplifying to `for i in range(len(completions))`
+    produces identical results.
+
+    When len(completions) > len(examples), completions wrap via modulo.
+    """
+
+    @staticmethod
+    def _current_indexing_logic(
+        completions: list[str],
+        examples: list,
+    ) -> list:
+        """Reproduce the exact logic from grpo.py:138-144.
+
+        Current code:
+            for i, j in enumerate(range(len(completions))):
+                examples[i % len(examples)] ...
+                completions[j] if j < len(completions) else ""
+        """
+        return [
+            (examples[i % len(examples)], completions[j] if j < len(completions) else "")
+            for i, j in enumerate(range(len(completions)))
+        ]
+
+    @staticmethod
+    def _simplified_indexing_logic(
+        completions: list[str],
+        examples: list,
+    ) -> list:
+        """Proposed simplified logic: drop enumerate, use single index."""
+        return [
+            (examples[i % len(examples)], completions[i])
+            for i in range(len(completions))
+        ]
+
+    def test_more_completions_than_examples(self) -> None:
+        """3 completions, 2 examples — modulo wraps correctly."""
+        examples = ["ex0", "ex1"]
+        completions = ["c0", "c1", "c2"]
+
+        current = self._current_indexing_logic(completions, examples)
+        simplified = self._simplified_indexing_logic(completions, examples)
+
+        assert current == simplified
+        assert current == [
+            ("ex0", "c0"),  # i=0, 0%2=0
+            ("ex1", "c1"),  # i=1, 1%2=1
+            ("ex0", "c2"),  # i=2, 2%2=0 (wraps)
+        ]
+
+    def test_equal_completions_and_examples(self) -> None:
+        """Same count — straightforward 1:1 mapping."""
+        examples = ["ex0", "ex1"]
+        completions = ["c0", "c1"]
+
+        current = self._current_indexing_logic(completions, examples)
+        simplified = self._simplified_indexing_logic(completions, examples)
+
+        assert current == simplified
+        assert current == [("ex0", "c0"), ("ex1", "c1")]
+
+    def test_fewer_completions_than_examples(self) -> None:
+        """1 completion, 2 examples — only first example used."""
+        examples = ["ex0", "ex1"]
+        completions = ["c0"]
+
+        current = self._current_indexing_logic(completions, examples)
+        simplified = self._simplified_indexing_logic(completions, examples)
+
+        assert current == simplified
+        assert current == [("ex0", "c0")]
+
+    def test_single_example_many_completions(self) -> None:
+        """All completions map to same example (modulo 1 always = 0)."""
+        examples = ["ex0"]
+        completions = ["c0", "c1", "c2", "c3"]
+
+        current = self._current_indexing_logic(completions, examples)
+        simplified = self._simplified_indexing_logic(completions, examples)
+
+        assert current == simplified
+        assert all(pair[0] == "ex0" for pair in current)
+
+    def test_dead_code_bounds_check(self) -> None:
+        """j is always < len(completions) — the guard `if j < len(completions)`
+        never triggers. Verify simplified version (no guard) is equivalent."""
+        examples = ["ex0", "ex1"]
+        completions = ["c0", "c1", "c2"]
+
+        # j = range(len(completions)) so j is always 0..len-1
+        # the `if j < len(completions)` check is dead code
+        for i, j in enumerate(range(len(completions))):
+            assert j < len(completions), (
+                f"j={j} should always be < {len(completions)} — "
+                "the bounds check is dead code"
+            )
+
+
 class TestComputeRewardStats:
     def test_basic(self) -> None:
         stats = _compute_reward_stats([0.2, 0.5, 0.8])

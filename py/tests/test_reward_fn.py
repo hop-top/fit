@@ -128,6 +128,50 @@ class TestParseScore:
         assert _parse_score("Score: 8") == 0.8
 
 
+class TestParseScoreClamping:
+    """Regression: _parse_score must clamp all returns to [0.0, 1.0].
+
+    Fraction branches (both bare and prefixed) divide numerator by
+    denominator without clamping, so num > denom yields values > 1.0.
+    """
+
+    def test_bare_fraction_over_one_clamped(self) -> None:
+        """'4/3' currently returns ~1.333; must be clamped to 1.0."""
+        assert _parse_score("4/3") <= 1.0
+
+    def test_prefixed_fraction_over_one_clamped(self) -> None:
+        """'Score: 5/3' currently returns ~1.667; must be clamped to 1.0."""
+        assert _parse_score("Score: 5/3") <= 1.0
+
+    def test_zero_fraction_stays_zero(self) -> None:
+        """'0/5' returns 0.0 — should remain 0.0 after clamping."""
+        assert _parse_score("0/5") == pytest.approx(0.0)
+
+    def test_all_returns_in_unit_range(self) -> None:
+        """Every branch of _parse_score must return a value in [0.0, 1.0]."""
+        cases = [
+            "4/3",
+            "Score: 5/3",
+            "0/5",
+            "Score: 0.8",
+            "Rating: 0.9",
+            "4/5",
+            "The result is 0.7",
+            "no numbers here",
+            "Score: 8",
+            "8",
+            "1",
+            "10",
+            "0",
+            "I'd give it a 7 out of 10",
+        ]
+        for text in cases:
+            score = _parse_score(text)
+            assert 0.0 <= score <= 1.0, (
+                f"_parse_score({text!r}) = {score}, outside [0.0, 1.0]"
+            )
+
+
 class TestParseScoreBareInteger:
     """Regression: _parse_score must handle bare integers like '8'
     (not just decimals like '8.0'). The bare-number regex required

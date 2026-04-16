@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import re
 import sqlite3
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -9,6 +10,8 @@ from pathlib import Path
 from typing import Any
 
 import yaml
+
+_VALID_TABLE_RE = re.compile(r"^[a-zA-Z_][a-zA-Z0-9_]*$")
 
 
 @dataclass(frozen=True)
@@ -96,7 +99,7 @@ class TraceIngester:
         for yaml_file in sorted(path.rglob("*.y*ml")):
             with yaml_file.open("r", encoding="utf-8") as f:
                 raw = yaml.safe_load(f)
-            if isinstance(raw, dict):
+            if isinstance(raw, dict) and ("input" in raw or "frontier" in raw):
                 self._records.append(_parse_raw(raw))
         return self
 
@@ -105,6 +108,8 @@ class TraceIngester:
 
         Expected columns: data (JSON text) or individual trace fields.
         """
+        if not table or not _VALID_TABLE_RE.match(table):
+            raise ValueError(f"Invalid table name: {table!r}")
         path = Path(path)
         if not path.exists():
             raise FileNotFoundError(f"SQLite file not found: {path}")

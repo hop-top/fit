@@ -132,6 +132,116 @@ class TestLoadSqlite:
             TraceIngester().load_sqlite("/nonexistent/file.db")
 
 
+class TestLoadYamlDirFiltersNonTraceRegressions:
+    """Regression: load_yaml_dir must only ingest step-NNN trace files.
+
+    PR #29 review item 2 — rglob('*.y*ml') picks up ALL yaml files
+    including configs/schemas. Non-trace YAML produces mostly-empty
+    TraceRecords. These tests prove the bug (they FAIL on main).
+    """
+
+    def test_mixed_dir_only_loads_traces(self, tmp_path: Path) -> None:
+        """Dir with step-001.yaml + config.yaml should load ONLY the trace."""
+        session_dir = tmp_path / "sess_test"
+        session_dir.mkdir()
+
+        # valid trace
+        (session_dir / "step-001.yaml").write_text(
+            yaml.safe_dump(SAMPLE_TRACE, default_flow_style=False),
+            encoding="utf-8",
+        )
+        # non-trace config
+        (session_dir / "config.yaml").write_text(
+            yaml.safe_dump({"app": "fit", "version": "1.0"}),
+            encoding="utf-8",
+        )
+
+        ingester = TraceIngester().load_yaml_dir(tmp_path)
+        assert ingester.count() == 1, (
+            f"Expected 1 (trace only), got {ingester.count()} — "
+            "non-trace YAML files must be filtered"
+        )
+
+    def test_dir_with_only_non_trace_yields_zero(self, tmp_path: Path) -> None:
+        """Dir with only a schema.yml should produce 0 records."""
+        session_dir = tmp_path / "sess_empty"
+        session_dir.mkdir()
+        (session_dir / "schema.yml").write_text(
+            yaml.safe_dump({"type": "object", "properties": {}}),
+            encoding="utf-8",
+        )
+
+        ingester = TraceIngester().load_yaml_dir(tmp_path)
+        assert ingester.count() == 0, (
+            f"Expected 0 (no traces), got {ingester.count()} — "
+            "non-trace YAML must be filtered"
+        )
+
+    def test_non_trace_not_producing_empty_record(self, tmp_path: Path) -> None:
+        """Non-trace YAML must not produce a mostly-empty TraceRecord."""
+        session_dir = tmp_path / "sess_cfg"
+        session_dir.mkdir()
+        (session_dir / "config.yaml").write_text(
+            yaml.safe_dump({"app": "fit"}),
+            encoding="utf-8",
+        )
+
+        records = TraceIngester().load_yaml_dir(tmp_path).to_trace_records()
+        assert len(records) == 0
+
+
+class TestLoadSqliteTableValidationRegressions:
+    """Regression: load_sqlite must validate the table parameter.
+
+    PR #29 review item 3 — table is interpolated into f-string SQL.
+    Malicious or malformed table names enable SQL injection.
+    These tests prove the bug (they FAIL on main).
+    """
+
+    def _make_db(self, tmp_path: Path) -> Path:
+        db_path = tmp_path / "traces.db"
+        conn = sqlite3.connect(str(db_path))
+        conn.execute("CREATE TABLE traces (data TEXT)")
+        conn.execute(
+            "INSERT INTO traces VALUES (?)",
+            (json.dumps(SAMPLE_TRACE),),
+        )
+        conn.commit()
+        conn.close()
+        return db_path
+
+    def test_injection_attempt_raises(self, tmp_path: Path) -> None:
+        """Injection string should be rejected before hitting SQL.
+
+        Currently fails because table is interpolated unsafely.
+        Fix should raise ValueError; currently raises OperationalError
+        or silently executes — either way, no ValueError is raised.
+        """
+        db_path = self._make_db(tmp_path)
+        with pytest.raises(ValueError, match="table"):
+            TraceIngester().load_sqlite(
+                db_path, table="traces; DROP TABLE traces--"
+            )
+
+    def test_table_with_space_raises(self, tmp_path: Path) -> None:
+        """Spaces in table name should be rejected before hitting SQL."""
+        db_path = self._make_db(tmp_path)
+        with pytest.raises(ValueError, match="table"):
+            TraceIngester().load_sqlite(db_path, table="bad name")
+
+    def test_empty_table_raises(self, tmp_path: Path) -> None:
+        """Empty table name should be rejected before hitting SQL."""
+        db_path = self._make_db(tmp_path)
+        with pytest.raises(ValueError, match="table"):
+            TraceIngester().load_sqlite(db_path, table="")
+
+    def test_valid_table_works(self, tmp_path: Path) -> None:
+        db_path = self._make_db(tmp_path)
+        ingester = TraceIngester().load_sqlite(db_path, table="traces")
+        assert ingester.count() == 1
+        assert ingester.to_trace_records()[0].id == "test-001"
+
+
 class TestLoadBatch:
     def test_auto_detect_json(self, tmp_path: Path) -> None:
         j = tmp_path / "traces.json"

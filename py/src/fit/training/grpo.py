@@ -139,9 +139,9 @@ class GRPOTrainer:
                     self._reward_fn(
                         examples[i % len(examples)].context,
                         examples[i % len(examples)].advice,
-                        completions[j] if j < len(completions) else "",
+                        completions[i],
                     )
-                    for i, j in enumerate(range(len(completions)))
+                    for i in range(len(completions))
                 ]
             # Default: use pre-computed rewards from dataset
             return [examples[i % len(examples)].reward for i in range(len(completions))]

@@ -81,6 +81,26 @@ class TestFitDataset:
     def test_reward_stats_empty(self) -> None:
         assert FitDataset([]).reward_stats()["mean"] == 0.0
 
+    def test_reward_stats_empty_has_count_key(self) -> None:
+        """Regression: empty dataset reward_stats() must include 'count' key.
+
+        When empty, reward_stats() returns {"mean":0,"std":0,"min":0,"max":0}
+        but omits "count" — inconsistent with the non-empty path which
+        includes "count": float(n).
+        """
+        stats = FitDataset([]).reward_stats()
+        assert "count" in stats, (
+            f"reward_stats() for empty dataset missing 'count' key: {stats}"
+        )
+        assert stats["count"] == 0.0
+
+    def test_reward_stats_nonempty_has_count_key(self) -> None:
+        """Non-empty dataset must also include 'count' key (sanity check)."""
+        ds = FitDataset([TrainingExample("a", "b", 0.5)])
+        stats = ds.reward_stats()
+        assert "count" in stats
+        assert stats["count"] == 1.0
+
     def test_examples_property_is_copy(self) -> None:
         ds = FitDataset([TrainingExample("a", "b", 0.5)])
         ds.examples.append(TrainingExample("c", "d", 0.6))
