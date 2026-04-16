@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "description": "Train small advisor models to steer black-box LLMs",
   "type": "module",
+  "engines": { "node": ">=18.0.0" },
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "exports": {
