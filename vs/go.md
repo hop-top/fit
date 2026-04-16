@@ -23,14 +23,14 @@ import (
 func main() {
     ctx := context.Background()
 
-    // Connect to advisor endpoint
-    advisor := fit.NewRemoteAdvisor("http://localhost:8080")
+    // Implement the Advisor interface for your backend
+    advisor := &MyRemoteAdvisor{endpoint: "http://localhost:8080"}
 
-    // Pick a frontier adapter
-    adapter := fit.NewAnthropicAdapter(os.Getenv("ANTHROPIC_API_KEY"))
+    // Implement the Adapter interface for your frontier LLM
+    adapter := &MyAnthropicAdapter{apiKey: os.Getenv("ANTHROPIC_API_KEY")}
 
-    // Configure reward scoring
-    scorer := fit.NewCompositeScorer(/* your scorers */)
+    // Implement the RewardScorer interface for your domain
+    scorer := &MyCompositeScorer{}
 
     // Create session
     session := fit.NewSession(advisor, adapter, scorer)
@@ -51,23 +51,29 @@ func main() {
 
 ## Adapter configuration
 
-Three frontier adapters ship out of the box:
+Implement the `Adapter` interface for your frontier LLM:
 
 ```go
-// Anthropic (Claude)
-anthropic := fit.NewAnthropicAdapter(apiKey)
+// AnthropicAdapter calls the Anthropic Messages API.
+type AnthropicAdapter struct {
+    apiKey string
+    model  string
+}
 
-// OpenAI (GPT)
-openai := fit.NewOpenAIAdapter(apiKey)
-
-// Ollama (local models)
-ollama := fit.NewOllamaAdapter() // defaults to localhost:11434
+func (a *AnthropicAdapter) Call(
+    ctx context.Context, prompt string, advice *fit.Advice,
+) (string, map[string]any, error) {
+    system := "[Advisor Guidance]\n" + advice.SteeringText
+    // Call Anthropic API with system prompt containing advice
+    // ...
+    return output, meta, nil
+}
 ```
 
 Each adapter injects advice into the system prompt as hidden context:
 the frontier model receives guidance, but end users never see it.
 
-Custom adapters implement the `Adapter` interface:
+The `Adapter` interface:
 
 ```go
 type Adapter interface {
@@ -102,13 +108,29 @@ func (s *TaxAccuracyScorer) Score(
 }
 ```
 
-Combine multiple scorers with `CompositeScorer`:
+Combine multiple scorers with a weighted composite:
 
 ```go
-scorer := fit.NewCompositeScorer(
-    []fit.RewardScorer{&TaxAccuracyScorer{}, &SafetyScorer{}},
-    []float64{0.7, 0.3}, // weights
-)
+type CompositeScorer struct {
+    scorers []fit.RewardScorer
+    weights []float64
+}
+
+func (c *CompositeScorer) Score(
+    output string, context map[string]any,
+) (*fit.Reward, error) {
+    totalWeight := 0.0
+    combined := 0.0
+    for i, s := range c.scorers {
+        r, err := s.Score(output, context)
+        if err != nil {
+            return nil, err
+        }
+        combined += r.Score * c.weights[i]
+        totalWeight += c.weights[i]
+    }
+    return &fit.Reward{Score: combined / totalWeight}, nil
+}
 ```
 
 ## Trace handling
@@ -116,23 +138,14 @@ scorer := fit.NewCompositeScorer(
 ```go
 writer := fit.NewTraceWriter("./traces")
 
-// After session run:
-err := writer.Write(result.Trace, 1)
-if err != nil {
-    log.Fatal(err)
-}
-
-// Traces stored as:
-// ./traces/{session_id}/step-001.yaml
+// Trace structs are produced by Session.Run:
+trace := result.Trace
+// Write trace to xrr-compatible YAML (implement your own writer
+// or use the TraceWriter as a starting point)
 ```
 
-Traces are xrr-compatible YAML cassettes. Load them for replay
-or advisor training:
-
-```go
-reader := fit.NewTraceReader("./traces")
-sessions := reader.ListSessions()
-```
+Traces are xrr-compatible YAML cassettes. The `Trace` struct
+contains all session data for replay or advisor training.
 
 ## Multi-turn sessions
 

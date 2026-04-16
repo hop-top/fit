@@ -15,7 +15,11 @@ export class CompositeScorer implements RewardScorer {
       );
     }
     this.scorers = scorers;
-    this.weights = weights ?? scorers.map(() => 1 / scorers.length);
+    this.weights =
+      weights ??
+      (scorers.length === 0
+        ? []
+        : scorers.map(() => 1 / scorers.length));
   }
 
   async score(
@@ -30,16 +34,20 @@ export class CompositeScorer implements RewardScorer {
       return {
         score: 0.0,
         breakdown: {},
-        metadata: { scorers: 0 },
+        metadata: { scorers: rewards.length },
       };
     }
     const combined = rewards.reduce(
       (sum, r, i) => sum + r.score * this.weights[i],
       0,
     );
+    const mergedBreakdown: Record<string, number> = {};
+    for (const r of rewards) {
+      Object.assign(mergedBreakdown, r.breakdown);
+    }
     return {
       score: combined / totalWeight,
-      breakdown: rewards[0]?.breakdown ?? {},
+      breakdown: mergedBreakdown,
       metadata: { scorers: rewards.length },
     };
   }

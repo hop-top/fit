@@ -16,11 +16,13 @@ pip install "fit[dev]"       # pytest, ruff, mypy
 ## Quick start
 
 ```python
-from fit import Session, RemoteAdvisor, CompositeScorer
+from fit.session import Session
+from fit.advisor import RemoteAdvisor
+from fit.reward import CompositeScorer
 from fit.adapters import AnthropicAdapter
 
 advisor = RemoteAdvisor.from_endpoint("http://localhost:8080")
-adapter = AnthropicAdapter()  # uses ANTHROPIC_API_KEY env var
+adapter = AnthropicAdapter()
 scorer = CompositeScorer.composite(["accuracy", "relevance", "safety"])
 
 session = Session(advisor=advisor, adapter=adapter, scorer=scorer)
@@ -40,11 +42,11 @@ Three adapters ship with the package:
 ```python
 from fit.adapters import AnthropicAdapter, OpenAIAdapter, OllamaAdapter
 
-# Anthropic (Claude)
-adapter = AnthropicAdapter()  # env: ANTHROPIC_API_KEY
+# Anthropic (Claude) — pass API key explicitly
+adapter = AnthropicAdapter(api_key="sk-ant-...")
 
 # OpenAI (GPT)
-adapter = OpenAIAdapter()     # env: OPENAI_API_KEY
+adapter = OpenAIAdapter()
 
 # Ollama (local)
 adapter = OllamaAdapter()     # defaults to localhost:11434

@@ -24,7 +24,8 @@ class ConformanceTest extends TestCase
         // Since PHP doesn't ship with YAML by default, parse via
         //Symfony YAML or manually for these simple structures.
         // For conformance tests, use the JSON equivalent where available.
-        return yaml_parse($content) ?: $this->simpleYamlParse($content);
+        return (function_exists('yaml_parse') && yaml_parse($content))
+            ?: $this->simpleYamlParse($content);
     }
 
     private static function loadJson(string $name): array

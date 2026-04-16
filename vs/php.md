@@ -13,13 +13,21 @@ Requires PHP 8.3+.
 ```php
 use Hop\Fit\{Session, Advice, Reward, Trace};
 use Hop\Fit\{AdvisorInterface, AdapterInterface, RewardScorerInterface};
+use Hop\Fit\CompositeScorer;
 
-// Create session with your implementations
-$session = new Session(
-    advisor: new RemoteAdvisor('http://localhost:8080'),
-    adapter: new AnthropicAdapter($_ENV['ANTHROPIC_API_KEY']),
-    scorer: new CompositeScorer(['accuracy', 'relevance', 'safety']),
+// Implement AdvisorInterface for your advisor backend
+$advisor = new MyRemoteAdvisor('http://localhost:8080');
+
+// Implement AdapterInterface for your frontier LLM
+$adapter = new MyAnthropicAdapter($_ENV['ANTHROPIC_API_KEY']);
+
+// Combine scorers with weights (or use CompositeScorer::fromDimensions)
+$scorer = new CompositeScorer(
+    scorers: [new TaxAccuracyScorer(), new SafetyScorer()],
+    weights: [0.7, 0.3],
 );
+
+$session = new Session($advisor, $adapter, $scorer);
 
 [$output, $reward, $trace] = $session->run(
     'What is the standard deduction?',
@@ -103,15 +111,19 @@ class TaxAccuracyScorer implements RewardScorerInterface
 }
 ```
 
-Combine multiple scorers:
+Combine multiple scorers (takes `RewardScorerInterface[]`, not strings):
 
 ```php
 use Hop\Fit\CompositeScorer;
 
+// With explicit weights
 $scorer = new CompositeScorer(
     scorers: [new TaxAccuracyScorer(), new SafetyScorer()],
     weights: [0.7, 0.3],
 );
+
+// Or via dimension names (equal weights, uses DimensionScorer internally)
+$scorer = CompositeScorer::fromDimensions(['accuracy', 'relevance', 'safety']);
 ```
 
 ## Trace handling
@@ -126,27 +138,21 @@ $writer->write($trace, step: 1);
 // ./traces/{session_id}/step-001.yaml
 ```
 
-Traces are xrr-compatible YAML cassettes. Load for replay:
+Traces are xrr-compatible YAML cassettes (via `symfony/yaml`).
+Read trace files directly for replay or advisor training:
 
 ```php
-$reader = new TraceReader('./traces');
-$sessions = $reader->listSessions();
-$data = $reader->read('sess_abc123', step: 1);
+use Symfony\Component\Yaml\Yaml;
+
+$traceData = Yaml::parseFile('./traces/session-abc/step-001.yaml');
 ```
 
 ## Multi-turn sessions
 
 ```php
-$session = new Session(
-    advisor: $advisor,
-    adapter: $adapter,
-    scorer: $scorer,
-    config: [
-        'mode' => 'multi-turn',
-        'max_steps' => 10,
-        'reward_threshold' => 0.95,
-    ],
-);
+// Session constructor: new Session(AdvisorInterface, AdapterInterface, RewardScorerInterface)
+// Configure via setter or by extending Session
+$session = new Session($advisor, $adapter, $scorer);
 ```
 
 ## Laravel integration
@@ -156,6 +162,7 @@ $session = new Session(
 namespace App\Services;
 
 use Hop\Fit\Session;
+use Hop\Fit\CompositeScorer;
 
 class FitService
 {
@@ -163,11 +170,12 @@ class FitService
 
     public function __construct()
     {
-        $this->session = new Session(
-            advisor: new RemoteAdvisor(config('fit.advisor_endpoint')),
-            adapter: new AnthropicAdapter(config('fit.anthropic_key')),
-            scorer: new CompositeScorer(['accuracy', 'safety']),
-        );
+        // Use your implementations of AdvisorInterface, AdapterInterface
+        $advisor = new MyRemoteAdvisor(config('fit.advisor_endpoint'));
+        $adapter = new MyAnthropicAdapter(config('fit.anthropic_key'));
+        $scorer = CompositeScorer::fromDimensions(['accuracy', 'safety']);
+
+        $this->session = new Session($advisor, $adapter, $scorer);
     }
 
     public function ask(string $prompt, array $context = []): array

@@ -277,7 +277,7 @@ where
             // Collect observations for next turn
             context.insert(
                 "step".into(),
-                serde_yaml::Value::Number(self.step.into()),
+                serde_yaml::Value::Number((self.step as u64).into()),
             );
 
             results.push(result);

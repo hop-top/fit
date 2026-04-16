@@ -24,7 +24,9 @@ class CompositeScorer implements RewardScorerInterface
     {
         $this->scorers = $scorers;
         $this->weights = empty($weights)
-            ? array_fill(0, count($scorers), 1.0 / count($scorers))
+            ? (count($scorers) === 0
+                ? []
+                : array_fill(0, count($scorers), 1.0 / count($scorers)))
             : $weights;
     }
 
@@ -45,9 +47,14 @@ class CompositeScorer implements RewardScorerInterface
             $combined += $reward->score * $this->weights[$i];
         }
 
+        $mergedBreakdown = [];
+        foreach ($rewards as $reward) {
+            $mergedBreakdown = array_merge($mergedBreakdown, $reward->breakdown);
+        }
+
         return new Reward(
             score: $combined / $totalWeight,
-            breakdown: $rewards[0]->breakdown ?? [],
+            breakdown: $mergedBreakdown,
             metadata: ['scorers' => count($rewards)],
         );
     }

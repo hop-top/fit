@@ -20,11 +20,15 @@ The frontier model is **never modified**.
 ## Quick start
 
 ```python
-from fit import Session, RemoteAdvisor, CompositeScorer
+from fit.session import Session
+from fit.advisor import RemoteAdvisor
+from fit.reward import CompositeScorer
+from fit.adapters import AnthropicAdapter
 
 advisor = RemoteAdvisor.from_endpoint("http://localhost:8080")
+adapter = AnthropicAdapter()
 scorer = CompositeScorer.composite(["accuracy", "relevance", "safety"])
-session = Session(advisor=advisor, adapter=AnthropicAdapter(), scorer=scorer)
+session = Session(advisor=advisor, adapter=adapter, scorer=scorer)
 
 output, reward, trace = session.run("What is the standard deduction?")
 ```

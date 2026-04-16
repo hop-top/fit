@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Hop\Fit;
 
+use Symfony\Component\Yaml\Yaml;
+
 class TraceWriter
 {
     public function __construct(
@@ -17,7 +19,10 @@ class TraceWriter
             mkdir($sessionDir, 0755, true);
         }
         $path = "{$sessionDir}/step-" . str_pad((string) $step, 3, '0', STR_PAD_LEFT) . '.yaml';
-        file_put_contents($path, yaml_emit($trace->toArray() ?? []));
+        file_put_contents(
+            $path,
+            Yaml::dump($trace->toArray(), 2, 4, Yaml::DUMP_OBJECT_AS_MAP),
+        );
         return $path;
     }
 }

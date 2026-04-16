@@ -52,7 +52,9 @@ pub struct CompositeScorer {
 
 impl CompositeScorer {
     pub fn new(scorers: Vec<Box<dyn RewardScorer>>, weights: Vec<f64>) -> Self {
-        let weights = if weights.is_empty() {
+        let weights = if scorers.is_empty() {
+            vec![]
+        } else if weights.is_empty() {
             let n = scorers.len() as f64;
             vec![1.0 / n; scorers.len()]
         } else {
@@ -100,12 +102,14 @@ impl RewardScorer for CompositeScorer {
             serde_yaml::Value::Number((rewards.len() as u64).into()),
         );
 
+        let merged_breakdown: HashMap<String, f64> = rewards
+            .iter()
+            .flat_map(|r| r.breakdown.clone())
+            .collect();
+
         Ok(Reward {
             score: combined / total_weight,
-            breakdown: rewards
-                .first()
-                .map(|r| r.breakdown.clone())
-                .unwrap_or_default(),
+            breakdown: merged_breakdown,
             metadata: meta,
         })
     }

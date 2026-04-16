@@ -24,7 +24,9 @@ class CompositeScorer(RewardScorer):
     ) -> None:
         self._scorers = list(scorers)
         self._weights = (
-            list(weights) if weights else [1.0 / len(scorers)] * len(scorers)
+            list(weights) if weights
+            else [] if not scorers
+            else [1.0 / len(scorers)] * len(scorers)
         )
 
     def score(self, output: str, context: dict[str, Any]) -> Reward:
