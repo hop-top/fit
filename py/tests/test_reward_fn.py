@@ -126,3 +126,24 @@ class TestParseScore:
 
     def test_score_above_one_scaled(self) -> None:
         assert _parse_score("Score: 8") == 0.8
+
+
+class TestParseScoreBareInteger:
+    """Regression: _parse_score must handle bare integers like '8'
+    (not just decimals like '8.0'). The bare-number regex required
+    a decimal part, so '8' fell through to default 0.5."""
+
+    def test_bare_integer_eight(self) -> None:
+        assert _parse_score("8") == pytest.approx(0.8)
+
+    def test_bare_integer_one(self) -> None:
+        assert _parse_score("1") == pytest.approx(1.0)
+
+    def test_bare_integer_ten(self) -> None:
+        assert _parse_score("10") == pytest.approx(1.0)
+
+    def test_bare_integer_zero(self) -> None:
+        assert _parse_score("0") == pytest.approx(0.0)
+
+    def test_mixed_text_with_bare_integer(self) -> None:
+        assert _parse_score("I'd give it a 7 out of 10") == pytest.approx(0.7)

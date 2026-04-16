@@ -4,7 +4,6 @@ Each test proves the bug exists before the fix is applied.
 """
 from __future__ import annotations
 
-import json
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -128,7 +127,13 @@ class TestPushToHubBytesArgument:
             model_path=str(model_dir),
             epochs_completed=1,
             final_loss=0.1,
-            reward_stats={"mean": 0.5, "std": 0.0, "min": 0.5, "max": 0.5, "count": 1.0},
+            reward_stats={
+                "mean": 0.5,
+                "std": 0.0,
+                "min": 0.5,
+                "max": 0.5,
+                "count": 1.0,
+            },
         )
 
         captured_args: dict = {}
@@ -141,27 +146,16 @@ class TestPushToHubBytesArgument:
                 captured_args.update(kwargs)
 
         with patch.dict("sys.modules", {"huggingface_hub": MagicMock(HfApi=FakeHfApi)}):
-            with patch(
-                "fit.training.export.ModelExporter.push_to_hub"
-            ) as mock_push:
-                # Can't easily mock import inside method; test the arg type
-                # by checking what the code produces
-                card = exporter.generate_model_card(result)
-                card_json = json.dumps(card, indent=2)
-                payload = card_json.encode()
+            exporter.push_to_hub("test/repo", result)
 
-                # Bug: payload is bytes, HfApi expects file-like or path
-                assert not isinstance(payload, str), (
-                    "Bug: card_json.encode() produces bytes, "
-                    "which HfApi.upload_file treats as invalid path."
-                )
-                # After fix: should wrap in BytesIO
-                import io
+        assert "path_or_fileobj" in captured_args
+        file_obj = captured_args["path_or_fileobj"]
+        import io
 
-                buf = io.BytesIO(payload)
-                assert hasattr(buf, "read"), (
-                    "Fix should wrap bytes in BytesIO for upload_file."
-                )
+        assert isinstance(file_obj, io.BytesIO), (
+            f"Bug: path_or_fileobj is {type(file_obj).__name__}, "
+            "expected BytesIO. Raw bytes cause upload_file to fail."
+        )
 
 
 # ---------------------------------------------------------------------------

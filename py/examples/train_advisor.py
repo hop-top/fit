@@ -107,7 +107,7 @@ def main() -> None:
         # Load all formats from directory
         jsonl_files = list(traces_path.glob("*.jsonl"))
         json_files = list(traces_path.glob("*.json"))
-        yaml_dir = traces_path if any(traces_path.rglob("*.yaml")) else None
+        yaml_dir = traces_path if any(traces_path.rglob("*.y*ml")) else None
 
         if jsonl_files:
             ingester.load_batch(jsonl_files)
@@ -198,7 +198,7 @@ def _dry_run_result(
     args: argparse.Namespace,
     records,
     stats: dict[str, float],
-) -> "TrainingResult":
+) -> "TrainingResult":  # noqa: F821
     """Create a mock training result for dry-run mode."""
     from fit.training.grpo import TrainingResult
 

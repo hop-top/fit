@@ -96,3 +96,56 @@ class TestModelExporter:
         assert (dest / "config.json").exists()
         assert (dest / "tokenizer.json").exists()
         assert json.loads((dest / "config.json").read_text()) == {"test": True}
+
+
+class TestPushToHubBytesIO:
+    """Regression: push_to_hub must pass BytesIO (not raw bytes) to
+    HfApi.upload_file for the model card upload."""
+
+    def test_model_card_uploads_as_bytesio(
+        self, tmp_path: Path
+    ) -> None:
+        import io
+        from unittest.mock import MagicMock, patch
+
+        model_dir = tmp_path / "model"
+        model_dir.mkdir()
+        exporter = ModelExporter(str(model_dir))
+        result = TrainingResult(
+            model_path=str(model_dir),
+            epochs_completed=1,
+            final_loss=0.1,
+            reward_stats={
+                "mean": 0.5,
+                "std": 0.0,
+                "min": 0.5,
+                "max": 0.5,
+                "count": 1.0,
+            },
+        )
+
+        captured_kwargs: dict = {}
+
+        class FakeHfApi:
+            def upload_folder(self, **kwargs: object) -> None:
+                pass
+
+            def upload_file(self, **kwargs: object) -> None:
+                captured_kwargs.update(kwargs)
+
+        fake_hf_module = MagicMock(HfApi=FakeHfApi)
+        with patch.dict("sys.modules", {"huggingface_hub": fake_hf_module}):
+            exporter.push_to_hub("test/repo", result)
+
+        assert "path_or_fileobj" in captured_kwargs
+        file_obj = captured_kwargs["path_or_fileobj"]
+        assert isinstance(file_obj, io.BytesIO), (
+            f"Bug: path_or_fileobj is {type(file_obj).__name__}, "
+            "expected BytesIO. Raw bytes cause upload_file to fail."
+        )
+        # Verify the BytesIO content is valid JSON
+        content = file_obj.read().decode()
+        file_obj.seek(0)
+        card = json.loads(content)
+        assert "model_id" in card
+        assert captured_kwargs["path_in_repo"] == "model_card.json"

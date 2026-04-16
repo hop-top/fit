@@ -217,7 +217,7 @@ def _detect_format(path: Path) -> str:
     """Detect trace format from file extension or directory contents."""
     if path.is_dir():
         # Check for YAML cassettes
-        if any(path.rglob("*.yaml")):
+        if any(path.rglob("*.y*ml")):
             return "yaml"
         # Check for JSONL files
         if any(path.glob("*.jsonl")):

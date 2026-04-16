@@ -35,7 +35,7 @@ class TestLLMJudgeRewardMissingAdvice:
             "fit.adapters.anthropic.AnthropicAdapter",
             return_value=mock_adapter,
         ):
-            score = judge("ctx", "some advice", "output text")
+            judge("ctx", "some advice", "output text")
 
         mock_adapter.call.assert_called_once()
         call_args = mock_adapter.call.call_args
@@ -77,7 +77,7 @@ class TestLLMJudgeRewardMissingAdvice:
             "fit.adapters.anthropic.AnthropicAdapter",
             return_value=mock_adapter,
         ):
-            score = judge("ctx", "advice", "output")
+            judge("ctx", "advice", "output")
 
         # Bug: code calls adapter.call(prompt) with 1 arg.
         # MagicMock without spec silently accepts this (no TypeError).
@@ -136,16 +136,13 @@ class TestGRPORewardFnAdviceArg:
         trainer = GRPOTrainer(config=config, reward_fn=RecordingReward())
 
         # Extract and call the actual reward_fn from _train_trl
-        # by importing and inspecting the closure
-        import inspect
-
         examples = dataset.examples
         completions = ["generated completion text"]
 
         # Call via the trainer's internal reward_fn construction
         # by invoking the same code path
         if trainer._reward_fn:
-            result = trainer._reward_fn(
+            trainer._reward_fn(
                 examples[0].context,
                 examples[0].advice,
                 completions[0],

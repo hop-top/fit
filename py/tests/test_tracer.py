@@ -102,6 +102,17 @@ class TestLoadYamlDir:
         assert len(records) >= 1
         assert all(isinstance(r, TraceRecord) for r in records)
 
+    def test_load_yml_cassettes(self, tmp_path: Path) -> None:
+        session_dir = tmp_path / "sess_yml"
+        session_dir.mkdir()
+        (session_dir / "step-001.yml").write_text(
+            yaml.safe_dump(SAMPLE_TRACE, default_flow_style=False),
+            encoding="utf-8",
+        )
+        ingester = TraceIngester().load_yaml_dir(tmp_path)
+        assert ingester.count() == 1
+        assert ingester.to_trace_records()[0].id == "test-001"
+
 
 class TestLoadSqlite:
     def test_load_json_blob(self, tmp_path: Path) -> None:
@@ -189,4 +200,18 @@ class TestDetectFormat:
 
     def test_directory_with_yaml(self, tmp_path: Path) -> None:
         (tmp_path / "step.yaml").touch()
+        assert _detect_format(tmp_path) == "yaml"
+
+
+class TestDetectFormatYml:
+    """Regression: _detect_format must detect yaml format for dirs
+    containing only .yml files (not just .yaml)."""
+
+    def test_dir_with_yml_only(self, tmp_path: Path) -> None:
+        (tmp_path / "step-001.yml").touch()
+        assert _detect_format(tmp_path) == "yaml"
+
+    def test_dir_with_yaml_and_yml(self, tmp_path: Path) -> None:
+        (tmp_path / "step-001.yaml").touch()
+        (tmp_path / "step-002.yml").touch()
         assert _detect_format(tmp_path) == "yaml"

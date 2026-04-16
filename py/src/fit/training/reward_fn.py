@@ -159,7 +159,7 @@ def _parse_score(text: str) -> float:
     if match:
         return float(match.group(1)) / float(match.group(2))
 
-    match = re.search(r"(\d+\.?\d+)", text)
+    match = re.search(r"(\d+\.?\d*)", text)
     if match:
         val = float(match.group(1))
         return min(max(val, 0.0), 1.0) if val <= 1.0 else val / 10.0

@@ -45,7 +45,11 @@ class ModelExporter:
             if bin_file.exists():
                 import torch  # noqa: F401
 
-                state_dict = torch.load(str(bin_file), map_location="cpu", weights_only=True)
+                state_dict = torch.load(
+                    str(bin_file),
+                    map_location="cpu",
+                    weights_only=True,
+                )
                 save_file(state_dict, str(out / "model.safetensors"))
             else:
                 logger.warning("No model weights found at %s", self._model_path)
@@ -62,7 +66,9 @@ class ModelExporter:
         # GGUF conversion requires llama.cpp's convert script or
         # the gguf library. Both are optional heavy deps.
         try:
-            from gguf import GGUFWriter as _GGUFWriter  # type: ignore[import-untyped]  # noqa: F401
+            from gguf import (  # type: ignore[import-untyped]
+                GGUFWriter as _GGUFWriter,  # noqa: F401
+            )
         except ImportError:
             # Fallback: copy if already a .gguf file
             existing = list(self._model_path.glob("*.gguf"))
