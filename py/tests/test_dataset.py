@@ -201,3 +201,38 @@ class TestPR32SplitValRatioZeroRegression:
             f"Expected 10 train examples with val_ratio=0.0, got {len(train)} — "
             "max(1, ...) steals 1 example for val"
         )
+
+
+class TestPR33SplitValRatioValidationRegression:
+    """Regression: FitDataset.split() must validate val_ratio bounds.
+
+    PR #33 review item 6 — split() does not validate val_ratio.
+    Negative ratios or values >1 produce nonsensical splits.
+    Fix should raise ValueError for out-of-range ratios.
+    """
+
+    @pytest.mark.xfail(
+        reason="PR #33 bug: split accepts negative val_ratio without "
+               "raising ValueError",
+        strict=True,
+    )
+    def test_negative_val_ratio_raises_value_error(self) -> None:
+        """split(val_ratio=-0.1) must raise ValueError."""
+        examples = [
+            TrainingExample(f"ctx{i}", f"adv{i}", 0.5) for i in range(10)
+        ]
+        with pytest.raises(ValueError, match="val_ratio"):
+            FitDataset(examples).split(val_ratio=-0.1)
+
+    @pytest.mark.xfail(
+        reason="PR #33 bug: split accepts val_ratio > 1.0 without "
+               "raising ValueError",
+        strict=True,
+    )
+    def test_val_ratio_above_one_raises_value_error(self) -> None:
+        """split(val_ratio=1.5) must raise ValueError."""
+        examples = [
+            TrainingExample(f"ctx{i}", f"adv{i}", 0.5) for i in range(10)
+        ]
+        with pytest.raises(ValueError, match="val_ratio"):
+            FitDataset(examples).split(val_ratio=1.5)

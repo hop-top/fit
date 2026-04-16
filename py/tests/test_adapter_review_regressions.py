@@ -10,6 +10,8 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 from fit.adapters import AnthropicAdapter, OllamaAdapter, OpenAIAdapter
 from fit.types import Advice
 
@@ -122,3 +124,65 @@ class TestOllamaPayloadConsistency:
         assert injected_call.kwargs["timeout"] == patched_call.kwargs["timeout"], (
             "Timeout mismatch between code paths"
         )
+
+
+# ---------------------------------------------------------------------------
+# PR #33 regression: response.usage can be None, crashes with AttributeError
+# ---------------------------------------------------------------------------
+
+
+class TestPR33OpenAIUsageNoneRegression:
+    """response.usage can be None in some OpenAI response modes/configs.
+    Accessing .prompt_tokens on None crashes with AttributeError."""
+
+    @pytest.mark.xfail(
+        reason="PR #33 bug: response.usage can be None; accessing "
+        ".prompt_tokens crashes with AttributeError"
+    )
+    def test_usage_none_returns_zero_tokens(self) -> None:
+        mock_client = MagicMock()
+        mock_response = MagicMock()
+        mock_response.choices = [
+            MagicMock(message=MagicMock(content="hello"))
+        ]
+        mock_response.model = "gpt-5"
+        mock_response.usage = None
+        mock_client.chat.completions.create.return_value = mock_response
+
+        adapter = OpenAIAdapter(api_key="test-key", client=mock_client)
+        output, meta = adapter.call("q", _make_advice())
+
+        assert isinstance(output, str)
+        assert meta["usage"]["prompt_tokens"] == 0, (
+            "usage.prompt_tokens must default to 0 when usage is None"
+        )
+        assert meta["usage"]["completion_tokens"] == 0, (
+            "usage.completion_tokens must default to 0 when usage is None"
+        )
+        assert meta["usage"]["total_tokens"] == 0, (
+            "usage.total_tokens must default to 0 when usage is None"
+        )
+
+    @pytest.mark.xfail(
+        reason="PR #33 bug: response.usage can be None; accessing "
+        ".prompt_tokens crashes with AttributeError"
+    )
+    def test_usage_present_returns_actual_tokens(self) -> None:
+        mock_client = MagicMock()
+        mock_response = MagicMock()
+        mock_response.choices = [
+            MagicMock(message=MagicMock(content="hello"))
+        ]
+        mock_response.model = "gpt-5"
+        mock_response.usage = MagicMock(
+            prompt_tokens=42, completion_tokens=13, total_tokens=55
+        )
+        mock_client.chat.completions.create.return_value = mock_response
+
+        adapter = OpenAIAdapter(api_key="test-key", client=mock_client)
+        output, meta = adapter.call("q", _make_advice())
+
+        assert isinstance(output, str)
+        assert meta["usage"]["prompt_tokens"] == 42
+        assert meta["usage"]["completion_tokens"] == 13
+        assert meta["usage"]["total_tokens"] == 55

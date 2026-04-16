@@ -469,3 +469,125 @@ class TestPR32ParseRawNonDictFieldsRegression:
         assert rec.frontier_model == ""
         assert rec.reward_score is None
         assert rec.reward_breakdown == {}
+
+
+class TestPR33JsonlNonDictLineRegression:
+    """Regression: load_jsonl() must validate JSON-decoded values are dicts.
+
+    PR #33 review item 3 — json.loads() can return list/str for valid
+    JSON (e.g. "[]", '"hello"'). These get passed to _parse_raw() which
+    calls raw.get(...) on the non-dict, raising AttributeError.
+    Fix should raise ValueError with a clear message.
+    """
+
+    @pytest.mark.xfail(
+        reason="PR #33 bug: load_jsonl passes non-dict JSON to "
+               "_parse_raw, crashes with AttributeError instead of "
+               "ValueError",
+        strict=True,
+    )
+    def test_jsonl_array_line_raises_value_error(
+        self, tmp_path: Path
+    ) -> None:
+        """A JSONL file with [] on a line must raise ValueError."""
+        jsonl = tmp_path / "bad.jsonl"
+        jsonl.write_text("[]\n", encoding="utf-8")
+        with pytest.raises(ValueError, match="dict"):
+            TraceIngester().load_jsonl(jsonl)
+
+    @pytest.mark.xfail(
+        reason="PR #33 bug: load_jsonl passes non-dict JSON to "
+               "_parse_raw, crashes with AttributeError instead of "
+               "ValueError",
+        strict=True,
+    )
+    def test_jsonl_string_line_raises_value_error(
+        self, tmp_path: Path
+    ) -> None:
+        """A JSONL file with "hello" on a line must raise ValueError."""
+        jsonl = tmp_path / "bad.jsonl"
+        jsonl.write_text('"hello"\n', encoding="utf-8")
+        with pytest.raises(ValueError, match="dict"):
+            TraceIngester().load_jsonl(jsonl)
+
+
+class TestPR33ConfidenceTypeRegression:
+    """Regression: _parse_raw() must handle non-float confidence values.
+
+    PR #33 review item 4 — advice.get("confidence", 0.0) returns None
+    when confidence key exists with null value (dict.get skips default
+    for existing keys). float(None) raises TypeError. Similarly
+    float("high") raises ValueError. Fix should coerce to 0.0.
+    """
+
+    @pytest.mark.xfail(
+        reason="PR #33 bug: confidence=null causes float(None) "
+               "TypeError — dict.get returns None for existing key "
+               "with null value",
+        strict=True,
+    )
+    def test_parse_raw_null_confidence_returns_zero(self) -> None:
+        """advice.confidence=null must produce advice_confidence=0.0."""
+        from fit.training.tracer import _parse_raw
+
+        rec = _parse_raw({"input": {}, "advice": {"confidence": None}})
+        assert rec.advice_confidence == 0.0
+
+    @pytest.mark.xfail(
+        reason="PR #33 bug: confidence='high' causes float('high') "
+               "ValueError — non-numeric string not coerced to 0.0",
+        strict=True,
+    )
+    def test_parse_raw_string_confidence_returns_zero(self) -> None:
+        """advice.confidence='high' must produce advice_confidence=0.0."""
+        from fit.training.tracer import _parse_raw
+
+        rec = _parse_raw({"input": {}, "advice": {"confidence": "high"}})
+        assert rec.advice_confidence == 0.0
+
+    def test_parse_raw_numeric_confidence_works(self) -> None:
+        """advice.confidence=0.8 must still produce advice_confidence=0.8.
+
+        This is the happy path — must not regress when fix is applied.
+        """
+        from fit.training.tracer import _parse_raw
+
+        rec = _parse_raw({"input": {}, "advice": {"confidence": 0.8}})
+        assert rec.advice_confidence == 0.8
+
+
+class TestPR33LoadBatchJsonNonDictRegression:
+    """Regression: load_batch() JSON path must validate list items are dicts.
+
+    PR #33 review item 5 — the JSON branch (lines 197-199) iterates
+    over list items without checking they're dicts. Non-dict items
+    get passed to _parse_raw() which crashes with AttributeError.
+    Fix should raise ValueError with a clear message.
+    """
+
+    @pytest.mark.xfail(
+        reason="PR #33 bug: load_batch JSON path passes non-dict list "
+               "items to _parse_raw, crashes with AttributeError",
+        strict=True,
+    )
+    def test_json_array_with_non_dict_items_raises(
+        self, tmp_path: Path
+    ) -> None:
+        """JSON file with [dict, 42] must raise ValueError."""
+        j = tmp_path / "traces.json"
+        j.write_text(
+            json.dumps([{"input": {}}, 42]),
+            encoding="utf-8",
+        )
+        with pytest.raises(ValueError, match="dict"):
+            TraceIngester().load_batch([j])
+
+    def test_json_array_with_all_dicts_works(self, tmp_path: Path) -> None:
+        """JSON file with all-dict list must load normally."""
+        j = tmp_path / "traces.json"
+        j.write_text(
+            json.dumps([{"input": {}}, {"frontier": {}}]),
+            encoding="utf-8",
+        )
+        ingester = TraceIngester().load_batch([j])
+        assert ingester.count() == 2
