@@ -1,0 +1,49 @@
+import type { Reward } from "./types.js";
+
+export interface RewardScorer {
+  score(output: string, context: Record<string, unknown>): Promise<Reward>;
+}
+
+export class CompositeScorer implements RewardScorer {
+  private scorers: RewardScorer[];
+  private weights: number[];
+
+  constructor(scorers: RewardScorer[], weights?: number[]) {
+    this.scorers = scorers;
+    this.weights = weights ?? scorers.map(() => 1 / scorers.length);
+  }
+
+  async score(
+    output: string,
+    context: Record<string, unknown>,
+  ): Promise<Reward> {
+    const rewards = await Promise.all(
+      this.scorers.map((s) => s.score(output, context)),
+    );
+    const totalWeight = this.weights.reduce((a, b) => a + b, 0);
+    const combined = rewards.reduce(
+      (sum, r, i) => sum + r.score * this.weights[i],
+      0,
+    );
+    return {
+      score: combined / totalWeight,
+      breakdown: rewards[0]?.breakdown ?? {},
+      metadata: { scorers: rewards.length },
+    };
+  }
+
+  static composite(names: string[]): CompositeScorer {
+    return new CompositeScorer(names.map((n) => new DimensionScorer(n)));
+  }
+}
+
+class DimensionScorer implements RewardScorer {
+  constructor(private dimension: string) {}
+
+  async score(
+    _output: string,
+    _context: Record<string, unknown>,
+  ): Promise<Reward> {
+    return { score: 0.5, breakdown: { [this.dimension]: 0.5 } };
+  }
+}

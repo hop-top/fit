@@ -1,0 +1,25 @@
+{
+  "name": "@hop/fit",
+  "version": "0.1.0",
+  "description": "Train small advisor models to steer black-box LLMs",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "^5.5",
+    "vitest": "^2.0"
+  },
+  "license": "MIT"
+}

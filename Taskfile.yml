@@ -1,0 +1,88 @@
+version: "3"
+
+vars:
+  GO_DIR: go
+  TS_DIR: ts
+  PY_DIR: py
+  RS_DIR: rs
+  PHP_DIR: php
+
+tasks:
+  test:
+    desc: Run tests for all ports
+    cmds:
+      - task: test:py
+      - task: test:go
+      - task: test:ts
+      - task: test:rs
+      - task: test:php
+
+  test:py:
+    desc: Python tests
+    dir: "{{.PY_DIR}}"
+    cmds:
+      - python -m pytest tests/ -x -q
+
+  test:go:
+    desc: Go tests
+    dir: "{{.GO_DIR}}"
+    cmds:
+      - go test ./... -count=1
+
+  test:ts:
+    desc: TypeScript tests
+    dir: "{{.TS_DIR}}"
+    cmds:
+      - npx vitest run
+
+  test:rs:
+    desc: Rust tests
+    dir: "{{.RS_DIR}}"
+    cmds:
+      - cargo test
+
+  test:php:
+    desc: PHP tests
+    dir: "{{.PHP_DIR}}"
+    cmds:
+      - vendor/bin/phpunit --no-coverage
+
+  lint:
+    desc: Lint all ports
+    cmds:
+      - task: lint:py
+      - task: lint:go
+      - task: lint:ts
+      - task: lint:rs
+      - task: lint:php
+
+  lint:py:
+    dir: "{{.PY_DIR}}"
+    cmds:
+      - ruff check src/ tests/
+
+  lint:go:
+    dir: "{{.GO_DIR}}"
+    cmds:
+      - go vet ./...
+
+  lint:ts:
+    dir: "{{.TS_DIR}}"
+    cmds:
+      - npx tsc --noEmit
+
+  lint:rs:
+    dir: "{{.RS_DIR}}"
+    cmds:
+      - cargo clippy -- -D warnings
+
+  lint:php:
+    dir: "{{.PHP_DIR}}"
+    cmds:
+      - vendor/bin/phpstan analyse src/
+
+  check:
+    desc: Lint + test all ports
+    cmds:
+      - task: lint
+      - task: test
