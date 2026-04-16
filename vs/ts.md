@@ -9,7 +9,7 @@ npm install @hop/fit
 ## Basic usage
 
 ```typescript
-import { Session, RemoteAdvisor, CompositeScorer, SessionResult } from "@hop/fit";
+import { Session, RemoteAdvisor, CompositeScorer } from "@hop/fit";
 import { AnthropicAdapter } from "@hop/fit/adapters";
 
 const advisor = RemoteAdvisor.fromEndpoint("http://localhost:8080");
