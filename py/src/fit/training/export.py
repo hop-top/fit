@@ -178,9 +178,11 @@ class ModelExporter:
 
         # Upload model card
         card = self.generate_model_card(training_result)
+        import io
+
         card_json = json.dumps(card, indent=2)
         api.upload_file(
-            path_or_fileobj=card_json.encode(),
+            path_or_fileobj=io.BytesIO(card_json.encode()),
             path_in_repo="model_card.json",
             repo_id=repo_id,
         )

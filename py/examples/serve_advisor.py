@@ -62,7 +62,8 @@ class FileAdvisor(Advisor):
                 try:
                     import yaml
 
-                    return yaml.safe_load(candidate.read_text(encoding="utf-8"))
+                    data = yaml.safe_load(candidate.read_text(encoding="utf-8"))
+                    return data if isinstance(data, dict) else {}
                 except ImportError:
                     print(
                         f"warning: {candidate} found but pyyaml not installed; "

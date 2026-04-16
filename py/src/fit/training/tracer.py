@@ -93,7 +93,7 @@ class TraceIngester:
         if not path.is_dir():
             raise NotADirectoryError(f"YAML dir not found: {path}")
 
-        for yaml_file in sorted(path.rglob("*.yaml")):
+        for yaml_file in sorted(path.rglob("*.y*ml")):
             with yaml_file.open("r", encoding="utf-8") as f:
                 raw = yaml.safe_load(f)
             if isinstance(raw, dict):

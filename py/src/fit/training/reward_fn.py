@@ -139,12 +139,22 @@ class CompositeReward(RewardFn):
 
 def _parse_score(text: str) -> float:
     """Extract a numeric score from LLM judge output."""
-    # Look for patterns like "Score: 0.8" or "Rating: 4/5" or bare float
+    # Try prefixed fraction first: "Score: 4/5", "Rating: 3/10"
+    match = re.search(
+        r"(?:score|rating)[:\s]+(\d+\.?\d*)\s*/\s*(\d+\.?\d*)",
+        text,
+        re.IGNORECASE,
+    )
+    if match:
+        return float(match.group(1)) / float(match.group(2))
+
+    # Try prefixed decimal/integer: "Score: 0.8", "Rating: 8"
     match = re.search(r"(?:score|rating)[:\s]+(\d+\.?\d*)", text, re.IGNORECASE)
     if match:
         val = float(match.group(1))
         return min(max(val, 0.0), 1.0) if val <= 1.0 else val / 10.0
 
+    # Try bare fraction: "4/5"
     match = re.search(r"(\d+\.?\d*)\s*/\s*(\d+)", text)
     if match:
         return float(match.group(1)) / float(match.group(2))

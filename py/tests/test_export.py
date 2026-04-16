@@ -67,7 +67,6 @@ class TestModelExporter:
         exporter = ModelExporter(str(model_dir))
 
         # push_to_hub requires valid HF credentials and repo;
-        # push_to_hub requires valid HF credentials and repo
         try:
             exporter.push_to_hub("test/repo", _training_result())
         except ImportError as exc:
