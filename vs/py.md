@@ -129,6 +129,9 @@ traces/
 
 ## Multi-turn sessions
 
+> **Note:** Multi-turn sessions are not yet implemented in the Python port.
+> The `SessionConfig` fields are reserved for future use. Use `mode: "one-shot"` (default).
+
 ```python
 from fit.session import Session, SessionConfig
 

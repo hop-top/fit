@@ -149,6 +149,9 @@ contains all session data for replay or advisor training.
 
 ## Multi-turn sessions
 
+> **Note:** Multi-turn sessions are not yet implemented in the Go port.
+> The `SessionConfig` fields are reserved for future use.
+
 ```go
 session := fit.NewSession(advisor, adapter, scorer)
 session.Config.Mode = "multi-turn"
