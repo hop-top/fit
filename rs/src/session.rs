@@ -159,6 +159,11 @@ where
         prompt: &str,
         context: BTreeMap<String, serde_yaml::Value>,
     ) -> Result<SessionResult, FitError> {
+        // Reset state/step/traces so run() can be called multiple times.
+        self.state = SessionState::Init;
+        self.step = 0;
+        self.traces.clear();
+
         let session_id = uuid::Uuid::new_v4().to_string();
         let mut result = self.run_with_session_id(prompt, context, &session_id).await?;
         self.transition(SessionState::Done)?;

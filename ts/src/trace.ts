@@ -1,6 +1,5 @@
-import { readFile, writeFile, mkdir } from "node:fs/promises";
+import { readFile, writeFile, mkdir, readdir } from "node:fs/promises";
 import { join } from "node:path";
-import { readdir } from "node:fs/promises";
 import type { Trace } from "./types.js";
 import * as yaml from "./yaml-stub.js";
 

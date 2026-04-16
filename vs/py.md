@@ -140,13 +140,13 @@ session = Session(advisor=advisor, adapter=adapter, scorer=scorer, config=config
 
 ```python
 from fastapi import FastAPI
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 app = FastAPI()
 
 class AskRequest(BaseModel):
     prompt: str
-    context: dict = {}
+    context: dict = Field(default_factory=dict)
 
 @app.post("/ask")
 async def ask(req: AskRequest):

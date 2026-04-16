@@ -18,7 +18,7 @@ class TraceWriter:
         session_dir = self._dir / trace.session_id
         session_dir.mkdir(parents=True, exist_ok=True)
         path = session_dir / f"step-{step:03d}.yaml"
-        path.write_text(yaml.dump(_trace_to_dict(trace), default_flow_style=False, sort_keys=False))
+        path.write_text(yaml.safe_dump(_trace_to_dict(trace), default_flow_style=False, sort_keys=False))
         return path
 
 

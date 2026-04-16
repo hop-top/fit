@@ -87,10 +87,11 @@ type evalCase struct {
 type evalAdapter struct{}
 
 func (e *evalAdapter) Call(_ context.Context, prompt string, advice *fit.Advice) (string, map[string]any, error) {
-	return "eval output", map[string]any{
+	const output = "eval output"
+	return output, map[string]any{
 		"model":    "eval",
 		"provider": "local",
-		"output":   prompt,
+		"output":   output,
 		"usage": map[string]int{
 			"prompt_tokens":     0,
 			"completion_tokens": 0,
