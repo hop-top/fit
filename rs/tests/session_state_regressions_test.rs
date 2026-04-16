@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 
 use fit::{
     Adapter, Advice, FitError, Reward, RewardScorer, Session, SessionConfig, SessionMode,
@@ -15,8 +15,8 @@ impl Adapter for EchoAdapter {
         &self,
         prompt: &str,
         _advice: &Advice,
-    ) -> Result<(String, HashMap<String, serde_yaml::Value>), FitError> {
-        let mut meta = HashMap::new();
+    ) -> Result<(String, BTreeMap<String, serde_yaml::Value>), FitError> {
+        let mut meta = BTreeMap::new();
         meta.insert(
             "provider".into(),
             serde_yaml::Value::String("echo".into()),
@@ -32,9 +32,9 @@ impl RewardScorer for FixedScorer {
     fn score(
         &self,
         _output: &str,
-        _context: &HashMap<String, serde_yaml::Value>,
+        _context: &BTreeMap<String, serde_yaml::Value>,
     ) -> Result<Reward, FitError> {
-        let mut breakdown = HashMap::new();
+        let mut breakdown = BTreeMap::new();
         breakdown.insert("accuracy".to_string(), self.0);
         Ok(Reward::new(self.0, breakdown))
     }
@@ -53,7 +53,7 @@ async fn one_shot_ends_in_done_state() {
 
     let mut session = Session::new(advisor, adapter, scorer);
     let result = session
-        .run("test prompt", HashMap::new())
+        .run("test prompt", BTreeMap::new())
         .await
         .expect("one-shot should succeed");
 
@@ -88,7 +88,7 @@ async fn multi_turn_trace_to_advise_transition() {
 
     let mut session = Session::new(advisor, adapter, scorer).with_config(config);
     let results = session
-        .run_multi_turn("test prompt", HashMap::new())
+        .run_multi_turn("test prompt", BTreeMap::new())
         .await
         .expect("multi-turn should succeed");
 
@@ -125,7 +125,7 @@ async fn multi_turn_ends_in_done_via_transition() {
 
     let mut session = Session::new(advisor, adapter, scorer).with_config(config);
     session
-        .run_multi_turn("test prompt", HashMap::new())
+        .run_multi_turn("test prompt", BTreeMap::new())
         .await
         .expect("multi-turn should succeed");
 
@@ -160,7 +160,7 @@ async fn zero_steps_done_via_transition() {
 
     let mut session = Session::new(advisor, adapter, scorer).with_config(config);
     let results = session
-        .run_multi_turn("test prompt", HashMap::new())
+        .run_multi_turn("test prompt", BTreeMap::new())
         .await
         .expect("zero-step should succeed");
 
@@ -186,7 +186,7 @@ async fn multi_turn_early_exit_done_via_transition() {
 
     let mut session = Session::new(advisor, adapter, scorer).with_config(config);
     let results = session
-        .run_multi_turn("test prompt", HashMap::new())
+        .run_multi_turn("test prompt", BTreeMap::new())
         .await
         .expect("multi-turn should succeed");
 

@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 use std::sync::{Arc, Mutex};
 
 use fit::{
@@ -16,8 +16,8 @@ impl Adapter for EchoAdapter {
         &self,
         prompt: &str,
         _advice: &Advice,
-    ) -> Result<(String, HashMap<String, serde_yaml::Value>), FitError> {
-        let mut meta = HashMap::new();
+    ) -> Result<(String, BTreeMap<String, serde_yaml::Value>), FitError> {
+        let mut meta = BTreeMap::new();
         meta.insert(
             "provider".into(),
             serde_yaml::Value::String("echo".into()),
@@ -33,9 +33,9 @@ impl RewardScorer for LowScorer {
     fn score(
         &self,
         _output: &str,
-        _context: &HashMap<String, serde_yaml::Value>,
+        _context: &BTreeMap<String, serde_yaml::Value>,
     ) -> Result<Reward, FitError> {
-        let mut breakdown = HashMap::new();
+        let mut breakdown = BTreeMap::new();
         breakdown.insert("accuracy".to_string(), 0.3);
         Ok(Reward::new(0.3, breakdown))
     }
@@ -60,7 +60,7 @@ async fn multi_turn_same_session_id() {
 
     let mut session = Session::new(advisor, adapter, scorer).with_config(config);
     let results = session
-        .run_multi_turn("test prompt", HashMap::new())
+        .run_multi_turn("test prompt", BTreeMap::new())
         .await
         .expect("multi-turn should succeed");
 
@@ -101,14 +101,14 @@ async fn multi_turn_resets_step_counter() {
 
     // First multi-turn run: should produce 2 steps (step 0 and step 1)
     let results = session
-        .run_multi_turn("prompt1", HashMap::new())
+        .run_multi_turn("prompt1", BTreeMap::new())
         .await
         .expect("first run");
     assert_eq!(results.len(), 2);
 
     // Second multi-turn run on same session: step should reset, still produce 2
     let results2 = session
-        .run_multi_turn("prompt2", HashMap::new())
+        .run_multi_turn("prompt2", BTreeMap::new())
         .await
         .expect("second run");
     assert_eq!(
@@ -143,7 +143,7 @@ async fn multi_turn_zero_steps_returns_empty() {
 
     let mut session = Session::new(advisor, adapter, scorer).with_config(config);
     let results = session
-        .run_multi_turn("test prompt", HashMap::new())
+        .run_multi_turn("test prompt", BTreeMap::new())
         .await
         .expect("zero-step should succeed");
 
@@ -155,11 +155,11 @@ async fn multi_turn_zero_steps_returns_empty() {
 /// Advisor that captures the input it receives on each call.
 /// Used to verify context contents at advisor invocation time.
 struct CaptureAdvisor {
-    captures: Arc<Mutex<Vec<HashMap<String, serde_yaml::Value>>>>,
+    captures: Arc<Mutex<Vec<BTreeMap<String, serde_yaml::Value>>>>,
 }
 
 impl CaptureAdvisor {
-    fn new(captures: Arc<Mutex<Vec<HashMap<String, serde_yaml::Value>>>>) -> Self {
+    fn new(captures: Arc<Mutex<Vec<BTreeMap<String, serde_yaml::Value>>>>) -> Self {
         Self { captures }
     }
 }
@@ -168,7 +168,7 @@ impl CaptureAdvisor {
 impl Advisor for CaptureAdvisor {
     async fn generate_advice(
         &self,
-        input: HashMap<String, serde_yaml::Value>,
+        input: BTreeMap<String, serde_yaml::Value>,
     ) -> Result<Advice, FitError> {
         self.captures.lock().unwrap().push(input);
         Ok(Advice::new("generic", "captured", 0.5))
@@ -190,7 +190,7 @@ impl Advisor for CaptureAdvisor {
 /// run_with_session_id call so the advisor sees the correct step.
 #[tokio::test]
 async fn multi_turn_step_available_in_context_before_advisor_call() {
-    let captures: Arc<Mutex<Vec<HashMap<String, serde_yaml::Value>>>> =
+    let captures: Arc<Mutex<Vec<BTreeMap<String, serde_yaml::Value>>>> =
         Arc::new(Mutex::new(vec![]));
     let advisor = CaptureAdvisor::new(captures.clone());
     let adapter = EchoAdapter;
@@ -204,7 +204,7 @@ async fn multi_turn_step_available_in_context_before_advisor_call() {
 
     let mut session = Session::new(advisor, adapter, scorer).with_config(config);
     session
-        .run_multi_turn("test prompt", HashMap::new())
+        .run_multi_turn("test prompt", BTreeMap::new())
         .await
         .expect("multi-turn should succeed");
 

@@ -99,3 +99,25 @@ describe("yaml-stub cross-tool compatibility", () => {
     expect(out).toMatch(/deleted: false/);
   });
 });
+
+// Regression: load() must use JSON_SCHEMA, not DEFAULT_SCHEMA.
+//
+// Before fix: js-yaml DEFAULT_SCHEMA auto-converts bare date strings
+// (e.g. "2025-04-14") into JS Date objects. This is surprising and
+// unsafe for callers expecting JSON-compatible types. After fix: load()
+// uses JSON_SCHEMA which keeps date strings as plain strings.
+describe("yaml-stub unsafe schema rejection", () => {
+  it("keeps bare date strings as strings, not Date objects", () => {
+    const doc = "ts: 2025-04-14\n";
+    const result = load(doc) as Record<string, unknown>;
+    // With JSON_SCHEMA: string. With DEFAULT_SCHEMA: Date object.
+    expect(typeof result.ts).toBe("string");
+    expect(result.ts).toBe("2025-04-14");
+  });
+
+  it("keeps YAML merge keys and binary tags out", () => {
+    // JSON_SCHEMA rejects !!binary and other non-JSON YAML tags
+    const doc = 'data: !!binary "aGVsbG8="\n';
+    expect(() => load(doc)).toThrow();
+  });
+});

@@ -2,7 +2,7 @@ use crate::advisor::Advice;
 use crate::error::FitError;
 use crate::reward::Reward;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 use std::path::Path;
 
 /// Session trace (trace-format-v1).
@@ -11,12 +11,12 @@ pub struct Trace {
     pub id: String,
     pub session_id: String,
     pub timestamp: String,
-    pub input: HashMap<String, serde_yaml::Value>,
+    pub input: BTreeMap<String, serde_yaml::Value>,
     pub advice: Advice,
-    pub frontier: HashMap<String, serde_yaml::Value>,
+    pub frontier: BTreeMap<String, serde_yaml::Value>,
     pub reward: Reward,
     #[serde(default)]
-    pub metadata: HashMap<String, serde_yaml::Value>,
+    pub metadata: BTreeMap<String, serde_yaml::Value>,
 }
 
 impl Trace {

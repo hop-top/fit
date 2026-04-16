@@ -5,5 +5,5 @@ export function dump(obj: unknown): string {
 }
 
 export function load(text: string): unknown {
-  return yaml.load(text);
+  return yaml.load(text, { schema: yaml.JSON_SCHEMA });
 }

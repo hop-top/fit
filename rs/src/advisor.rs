@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 
 use crate::error::FitError;
 
@@ -12,7 +12,7 @@ pub struct Advice {
     #[serde(default)]
     pub constraints: Vec<String>,
     #[serde(default)]
-    pub metadata: HashMap<String, serde_yaml::Value>,
+    pub metadata: BTreeMap<String, serde_yaml::Value>,
     #[serde(default = "default_version")]
     pub version: String,
 }
@@ -29,7 +29,7 @@ impl Advice {
             steering_text: steering_text.to_string(),
             confidence,
             constraints: vec![],
-            metadata: HashMap::new(),
+            metadata: BTreeMap::new(),
             version: "1.0".to_string(),
         }
     }
@@ -60,7 +60,7 @@ impl Advice {
 pub trait Advisor: Send + Sync {
     async fn generate_advice(
         &self,
-        context: HashMap<String, serde_yaml::Value>,
+        context: BTreeMap<String, serde_yaml::Value>,
     ) -> Result<Advice, FitError>;
 
     fn model_id(&self) -> String;
@@ -95,7 +95,7 @@ impl RemoteAdvisor {
 impl Advisor for RemoteAdvisor {
     async fn generate_advice(
         &self,
-        context: HashMap<String, serde_yaml::Value>,
+        context: BTreeMap<String, serde_yaml::Value>,
     ) -> Result<Advice, FitError> {
         let resp = self
             .client
@@ -142,7 +142,7 @@ impl StubAdvisor {
 impl Advisor for StubAdvisor {
     async fn generate_advice(
         &self,
-        _context: HashMap<String, serde_yaml::Value>,
+        _context: BTreeMap<String, serde_yaml::Value>,
     ) -> Result<Advice, FitError> {
         Ok(Advice::new("generic", "Stub advice.", 0.5))
     }

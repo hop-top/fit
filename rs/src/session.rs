@@ -3,7 +3,7 @@ use crate::advisor::{Advice, Advisor};
 use crate::error::FitError;
 use crate::reward::{Reward, RewardScorer};
 use crate::trace::{Trace, TraceWriter};
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 
 /// Session lifecycle state.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -157,7 +157,7 @@ where
     pub async fn run(
         &mut self,
         prompt: &str,
-        context: HashMap<String, serde_yaml::Value>,
+        context: BTreeMap<String, serde_yaml::Value>,
     ) -> Result<SessionResult, FitError> {
         let session_id = uuid::Uuid::new_v4().to_string();
         let mut result = self.run_with_session_id(prompt, context, &session_id).await?;
@@ -170,7 +170,7 @@ where
     async fn run_with_session_id(
         &mut self,
         prompt: &str,
-        context: HashMap<String, serde_yaml::Value>,
+        context: BTreeMap<String, serde_yaml::Value>,
         session_id: &str,
     ) -> Result<SessionResult, FitError> {
         // Drive state via transition(). For first call state is Init; for
@@ -179,7 +179,7 @@ where
         self.transition(SessionState::Advise)?;
 
         // Build input map: { prompt: "...", context: { ... } }
-        let mut input = HashMap::new();
+        let mut input = BTreeMap::new();
         input.insert(
             "prompt".to_string(),
             serde_yaml::Value::String(prompt.to_string()),
@@ -213,7 +213,7 @@ where
         // Score: evaluate output, fallback to NaN on failure
         let reward = match self.scorer.score(&output, &context) {
             Ok(r) => r,
-            Err(_) => Reward::new(f64::NAN, HashMap::new()),
+            Err(_) => Reward::new(f64::NAN, BTreeMap::new()),
         };
 
         // Score -> Trace
@@ -229,7 +229,7 @@ where
             frontier: frontier_meta,
             reward: reward.clone(),
             metadata: {
-                let mut m = HashMap::new();
+                let mut m = BTreeMap::new();
                 m.insert(
                     "trace_version".into(),
                     serde_yaml::Value::String("1.0".into()),
@@ -261,7 +261,7 @@ where
     pub async fn run_multi_turn(
         &mut self,
         prompt: &str,
-        mut context: HashMap<String, serde_yaml::Value>,
+        mut context: BTreeMap<String, serde_yaml::Value>,
     ) -> Result<Vec<SessionResult>, FitError> {
         self.config.mode = SessionMode::MultiTurn;
         let session_id = uuid::Uuid::new_v4().to_string();

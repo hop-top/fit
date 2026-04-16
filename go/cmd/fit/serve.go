@@ -90,7 +90,10 @@ func handleAdvise(
 		}
 
 		w.Header().Set("Content-Type", "application/json")
-		jsonEncode(w, advice)
+		if err := jsonEncode(w, advice); err != nil {
+			http.Error(w, "encoding error: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
 	}
 }
 

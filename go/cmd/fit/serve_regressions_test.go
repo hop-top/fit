@@ -81,3 +81,43 @@ func TestHandleAdviseInvalidJSON(t *testing.T) {
 		t.Fatalf("expected 400, got %d", rec.Code)
 	}
 }
+
+// Regression: handleAdvise returns 500 when JSON encoding of advice fails.
+//
+// Before fix: jsonEncode error was silently ignored; handler returned 200
+// with a partial/empty body. After fix: handler returns 500 with an error
+// message when encoding fails.
+func TestHandleAdviseEncodingError(t *testing.T) {
+	advisor := &unmarshallableAdvisor{}
+	handler := handleAdvise(advisor, 5000)
+
+	body := `{"prompt":"hello"}`
+	req := httptest.NewRequest(http.MethodPost, "/advise", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+
+	handler(rec, req)
+
+	if rec.Code != http.StatusInternalServerError {
+		t.Fatalf("expected 500, got %d: %s", rec.Code, rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), "encoding error") {
+		t.Errorf("expected body to contain 'encoding error', got: %s", rec.Body.String())
+	}
+}
+
+// unmarshallableAdvisor returns advice containing values that cannot be
+// JSON-encoded (a channel), triggering a json.Encode error.
+type unmarshallableAdvisor struct{}
+
+func (a *unmarshallableAdvisor) GenerateAdvice(_ context.Context, _ map[string]any) (*fit.Advice, error) {
+	return &fit.Advice{
+		Domain:       "test",
+		SteeringText: "unmarshallable",
+		Confidence:   0.5,
+		Version:      "1.0",
+		Metadata:     map[string]any{"ch": make(chan int)},
+	}, nil
+}
+
+func (a *unmarshallableAdvisor) ModelID() string { return "bad-encoder" }

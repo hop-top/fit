@@ -1,6 +1,6 @@
 use crate::advisor::Advice;
 use crate::error::FitError;
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 
 /// Frontier LLM adapter trait.
 #[async_trait::async_trait]
@@ -9,7 +9,7 @@ pub trait Adapter: Send + Sync {
         &self,
         prompt: &str,
         advice: &Advice,
-    ) -> Result<(String, HashMap<String, serde_yaml::Value>), FitError>;
+    ) -> Result<(String, BTreeMap<String, serde_yaml::Value>), FitError>;
 }
 
 /// Anthropic API adapter.
@@ -48,7 +48,7 @@ impl Adapter for AnthropicAdapter {
         &self,
         prompt: &str,
         advice: &Advice,
-    ) -> Result<(String, HashMap<String, serde_yaml::Value>), FitError> {
+    ) -> Result<(String, BTreeMap<String, serde_yaml::Value>), FitError> {
         let system = self.build_system_prompt(advice);
 
         let body = serde_json::json!({
@@ -87,7 +87,7 @@ impl Adapter for AnthropicAdapter {
             .unwrap_or("")
             .to_string();
 
-        let mut meta = HashMap::new();
+        let mut meta = BTreeMap::new();
         meta.insert(
             "model".into(),
             serde_yaml::Value::String(self.model.clone()),
@@ -134,7 +134,7 @@ impl Adapter for OpenAIAdapter {
         &self,
         prompt: &str,
         advice: &Advice,
-    ) -> Result<(String, HashMap<String, serde_yaml::Value>), FitError> {
+    ) -> Result<(String, BTreeMap<String, serde_yaml::Value>), FitError> {
         let system = format!(
             "[Advisor Guidance]\n{}\n\nConstraints: {}",
             advice.steering_text,
@@ -176,7 +176,7 @@ impl Adapter for OpenAIAdapter {
             .unwrap_or("")
             .to_string();
 
-        let mut meta = HashMap::new();
+        let mut meta = BTreeMap::new();
         meta.insert(
             "model".into(),
             serde_yaml::Value::String(self.model.clone()),
@@ -234,7 +234,7 @@ impl Adapter for OllamaAdapter {
         &self,
         prompt: &str,
         advice: &Advice,
-    ) -> Result<(String, HashMap<String, serde_yaml::Value>), FitError> {
+    ) -> Result<(String, BTreeMap<String, serde_yaml::Value>), FitError> {
         let system = format!(
             "[Advisor Guidance]\n{}\n\nConstraints: {}",
             advice.steering_text,
@@ -271,7 +271,7 @@ impl Adapter for OllamaAdapter {
 
         let output = data["response"].as_str().unwrap_or("").to_string();
 
-        let mut meta = HashMap::new();
+        let mut meta = BTreeMap::new();
         meta.insert(
             "model".into(),
             serde_yaml::Value::String(self.model.clone()),

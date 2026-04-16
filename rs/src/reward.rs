@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 
 use crate::error::FitError;
 
@@ -7,18 +7,18 @@ use crate::error::FitError;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Reward {
     pub score: f64,
-    pub breakdown: HashMap<String, f64>,
+    pub breakdown: BTreeMap<String, f64>,
     #[serde(default)]
-    pub metadata: HashMap<String, serde_yaml::Value>,
+    pub metadata: BTreeMap<String, serde_yaml::Value>,
 }
 
 impl Reward {
     /// Create a new reward with the given score and breakdown.
-    pub fn new(score: f64, breakdown: HashMap<String, f64>) -> Self {
+    pub fn new(score: f64, breakdown: BTreeMap<String, f64>) -> Self {
         Self {
             score,
             breakdown,
-            metadata: HashMap::new(),
+            metadata: BTreeMap::new(),
         }
     }
 
@@ -38,7 +38,7 @@ pub trait RewardScorer: Send + Sync {
     fn score(
         &self,
         output: &str,
-        context: &HashMap<String, serde_yaml::Value>,
+        context: &BTreeMap<String, serde_yaml::Value>,
     ) -> Result<Reward, FitError>;
 }
 
@@ -89,7 +89,7 @@ impl RewardScorer for CompositeScorer {
     fn score(
         &self,
         output: &str,
-        context: &HashMap<String, serde_yaml::Value>,
+        context: &BTreeMap<String, serde_yaml::Value>,
     ) -> Result<Reward, FitError> {
         let rewards: Vec<Reward> = self
             .scorers
@@ -99,7 +99,7 @@ impl RewardScorer for CompositeScorer {
 
         let total_weight: f64 = self.weights.iter().sum();
         if total_weight == 0.0 {
-            return Ok(Reward::new(0.0, HashMap::new()));
+            return Ok(Reward::new(0.0, BTreeMap::new()));
         }
 
         let combined: f64 = rewards
@@ -108,13 +108,13 @@ impl RewardScorer for CompositeScorer {
             .map(|(r, w)| r.score * w)
             .sum();
 
-        let mut meta = HashMap::new();
+        let mut meta = BTreeMap::new();
         meta.insert(
             "scorers".into(),
             serde_yaml::Value::Number((rewards.len() as u64).into()),
         );
 
-        let merged_breakdown: HashMap<String, f64> = rewards
+        let merged_breakdown: BTreeMap<String, f64> = rewards
             .iter()
             .flat_map(|r| r.breakdown.clone())
             .collect();
@@ -144,9 +144,9 @@ impl RewardScorer for DimensionScorer {
     fn score(
         &self,
         _output: &str,
-        _context: &HashMap<String, serde_yaml::Value>,
+        _context: &BTreeMap<String, serde_yaml::Value>,
     ) -> Result<Reward, FitError> {
-        let mut breakdown = HashMap::new();
+        let mut breakdown = BTreeMap::new();
         breakdown.insert(self.dimension.clone(), 0.5);
         Ok(Reward::new(0.5, breakdown))
     }
@@ -169,7 +169,7 @@ impl RewardScorer for ExactMatchScorer {
     fn score(
         &self,
         output: &str,
-        _context: &HashMap<String, serde_yaml::Value>,
+        _context: &BTreeMap<String, serde_yaml::Value>,
     ) -> Result<Reward, FitError> {
         let score = if output.trim() == self.expected.trim() {
             1.0
@@ -177,7 +177,7 @@ impl RewardScorer for ExactMatchScorer {
             0.0
         };
 
-        let mut breakdown = HashMap::new();
+        let mut breakdown = BTreeMap::new();
         breakdown.insert("accuracy".to_string(), score);
         breakdown.insert("relevance".to_string(), score);
         breakdown.insert("safety".to_string(), 1.0);
