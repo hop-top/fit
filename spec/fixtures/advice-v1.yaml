@@ -1,0 +1,15 @@
+version: "1.0"
+domain: tax-compliance
+steering_text: |
+  Double-check filing status assumptions before calculating.
+  Prioritize rules explicitly stated in supplied instructions.
+  If ambiguity remains, surface it instead of guessing.
+  Show calculation steps only when confidence exceeds 0.8.
+confidence: 0.87
+constraints:
+  - never fabricate tax code sections
+  - cite specific IRS publication numbers
+  - flag state-specific rules
+metadata:
+  model: advisor-tax-v2.3
+  latency_ms: 42

@@ -1,0 +1,148 @@
+{
+  "session_id": "sess_def456",
+  "mode": "multi-turn",
+  "max_steps": 3,
+  "steps": [
+    {
+      "id": "660e8400-e29b-41d4-a716-446655440001",
+      "session_id": "sess_def456",
+      "timestamp": "2026-04-15T10:31:00Z",
+      "input": {
+        "prompt": "Fix the off-by-one in src/parser.rs:142",
+        "context": {
+          "repo": "hop-top/fit",
+          "issue": 42,
+          "step": 1
+        }
+      },
+      "advice": {
+        "domain": "code-agent",
+        "steering_text": "Search for related usages of the parser function first.",
+        "confidence": 0.72,
+        "constraints": ["no changes outside src/parser.rs"],
+        "metadata": {
+          "model": "advisor-swe-v1.1",
+          "step": 1
+        }
+      },
+      "frontier": {
+        "model": "gpt-5",
+        "provider": "openai",
+        "output": "I'll search for usages of parse_header...",
+        "usage": {
+          "prompt_tokens": 1205,
+          "completion_tokens": 832,
+          "total_tokens": 2037
+        }
+      },
+      "reward": {
+        "score": 0.65,
+        "breakdown": {
+          "accuracy": 0.7,
+          "relevance": 0.8,
+          "safety": 1.0,
+          "efficiency": 0.1
+        }
+      },
+      "metadata": {
+        "duration_ms": 4500,
+        "advisor_model": "advisor-swe-v1.1",
+        "trace_version": "1.0"
+      }
+    },
+    {
+      "id": "660e8400-e29b-41d4-a716-446655440002",
+      "session_id": "sess_def456",
+      "timestamp": "2026-04-15T10:31:30Z",
+      "input": {
+        "prompt": "Apply the fix to line 142",
+        "context": {
+          "repo": "hop-top/fit",
+          "issue": 42,
+          "step": 2
+        }
+      },
+      "advice": {
+        "domain": "code-agent",
+        "steering_text": "Apply minimal patch. Verify surrounding context.",
+        "confidence": 0.85,
+        "constraints": ["no changes outside src/parser.rs"],
+        "metadata": {
+          "model": "advisor-swe-v1.1",
+          "step": 2
+        }
+      },
+      "frontier": {
+        "model": "gpt-5",
+        "provider": "openai",
+        "output": "Changing `<` to `<=` on line 142...",
+        "usage": {
+          "prompt_tokens": 1500,
+          "completion_tokens": 620,
+          "total_tokens": 2120
+        }
+      },
+      "reward": {
+        "score": 0.9,
+        "breakdown": {
+          "accuracy": 1.0,
+          "relevance": 0.9,
+          "safety": 1.0,
+          "efficiency": 0.8
+        }
+      },
+      "metadata": {
+        "duration_ms": 3200,
+        "advisor_model": "advisor-swe-v1.1",
+        "trace_version": "1.0"
+      }
+    },
+    {
+      "id": "660e8400-e29b-41d4-a716-446655440003",
+      "session_id": "sess_def456",
+      "timestamp": "2026-04-15T10:32:00Z",
+      "input": {
+        "prompt": "Run tests to verify the fix",
+        "context": {
+          "repo": "hop-top/fit",
+          "issue": 42,
+          "step": 3
+        }
+      },
+      "advice": {
+        "domain": "code-agent",
+        "steering_text": "Run cargo test for the parser module only.",
+        "confidence": 0.93,
+        "constraints": ["no changes outside src/parser.rs"],
+        "metadata": {
+          "model": "advisor-swe-v1.1",
+          "step": 3
+        }
+      },
+      "frontier": {
+        "model": "gpt-5",
+        "provider": "openai",
+        "output": "Running `cargo test parser`... all 12 tests pass.",
+        "usage": {
+          "prompt_tokens": 980,
+          "completion_tokens": 340,
+          "total_tokens": 1320
+        }
+      },
+      "reward": {
+        "score": 1.0,
+        "breakdown": {
+          "accuracy": 1.0,
+          "relevance": 1.0,
+          "safety": 1.0,
+          "efficiency": 1.0
+        }
+      },
+      "metadata": {
+        "duration_ms": 2100,
+        "advisor_model": "advisor-swe-v1.1",
+        "trace_version": "1.0"
+      }
+    }
+  ]
+}

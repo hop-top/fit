@@ -1,0 +1,24 @@
+{
+  "name": "hop/fit",
+  "description": "Train small advisor models to steer black-box LLMs",
+  "type": "library",
+  "license": "MIT",
+  "require": {
+    "php": "^8.3",
+    "symfony/yaml": "^7"
+  },
+  "require-dev": {
+    "phpunit/phpunit": "^11",
+    "phpstan/phpstan": "^1.11"
+  },
+  "autoload": {
+    "psr-4": {
+      "Hop\\Fit\\": "src/"
+    }
+  },
+  "autoload-dev": {
+    "psr-4": {
+      "Hop\\Fit\\Tests\\": "tests/"
+    }
+  }
+}

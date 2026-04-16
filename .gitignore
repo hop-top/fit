@@ -1,0 +1,8 @@
+vendor/
+node_modules/
+dist/
+*.pyc
+__pycache__/
+.target/
+target/
+.phpunit.result.cache

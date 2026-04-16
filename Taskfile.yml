@@ -1,0 +1,182 @@
+version: "3"
+
+vars:
+  GO_DIR: go
+  TS_DIR: ts
+  PY_DIR: py
+  RS_DIR: rs
+  PHP_DIR: php
+
+tasks:
+  # --- Aggregates ---
+
+  default:
+    desc: Install + build + lint + test (full gate)
+    cmds:
+      - task: install
+      - task: build
+      - task: check
+
+  check:
+    desc: Lint + test all ports
+    cmds:
+      - task: lint
+      - task: test
+
+  # --- Install ---
+
+  install:
+    desc: Install dependencies for all ports
+    cmds:
+      - task: install:go
+      - task: install:ts
+      - task: install:py
+      - task: install:rs
+      - task: install:php
+
+  install:go:
+    desc: Go module download
+    dir: "{{.GO_DIR}}"
+    cmds:
+      - go mod download
+
+  install:ts:
+    desc: TypeScript pnpm install (ignores parent workspace)
+    dir: "{{.TS_DIR}}"
+    cmds:
+      - pnpm install --ignore-workspace --frozen-lockfile || pnpm install --ignore-workspace
+
+  install:py:
+    desc: Python dev deps (editable install)
+    dir: "{{.PY_DIR}}"
+    cmds:
+      - python -m pip install -e ".[dev]" --quiet || pip install -e ".[dev]" --quiet
+    status:
+      - python -c "import fit" 2>/dev/null
+
+  install:rs:
+    desc: Rust cargo fetch
+    dir: "{{.RS_DIR}}"
+    cmds:
+      - cargo fetch
+
+  install:php:
+    desc: PHP composer install
+    dir: "{{.PHP_DIR}}"
+    cmds:
+      - composer install --no-interaction --quiet
+    sources:
+      - composer.json
+      - composer.lock
+    generates:
+      - vendor/autoload.php
+
+  # --- Build ---
+
+  build:
+    desc: Build all ports that need compilation
+    cmds:
+      - task: build:ts
+      - task: build:rs
+      - task: build:go
+
+  build:ts:
+    desc: TypeScript compile
+    dir: "{{.TS_DIR}}"
+    cmds:
+      - npx tsc
+    sources:
+      - src/**/*.ts
+    generates:
+      - dist/index.js
+
+  build:rs:
+    desc: Rust cargo build
+    dir: "{{.RS_DIR}}"
+    cmds:
+      - cargo build
+
+  build:go:
+    desc: Go build CLI binary
+    dir: "{{.GO_DIR}}"
+    cmds:
+      - go build ./...
+
+  # --- Test ---
+
+  test:
+    desc: Run tests for all ports
+    cmds:
+      - task: test:py
+      - task: test:go
+      - task: test:ts
+      - task: test:rs
+      - task: test:php
+
+  test:py:
+    desc: Python tests
+    dir: "{{.PY_DIR}}"
+    env:
+      PYTHONPATH: src
+    cmds:
+      - python -m pytest tests/ -x -q
+
+  test:go:
+    desc: Go tests
+    dir: "{{.GO_DIR}}"
+    cmds:
+      - go test ./... -count=1
+
+  test:ts:
+    desc: TypeScript tests
+    dir: "{{.TS_DIR}}"
+    cmds:
+      - npx vitest run
+
+  test:rs:
+    desc: Rust tests
+    dir: "{{.RS_DIR}}"
+    cmds:
+      - cargo test
+
+  test:php:
+    desc: PHP tests
+    dir: "{{.PHP_DIR}}"
+    cmds:
+      - vendor/bin/phpunit --no-coverage
+
+  # --- Lint ---
+
+  lint:
+    desc: Lint all ports
+    cmds:
+      - task: lint:py
+      - task: lint:go
+      - task: lint:ts
+      - task: lint:rs
+      - task: lint:php
+
+  lint:py:
+    dir: "{{.PY_DIR}}"
+    cmds:
+      - ruff check src/ tests/
+
+  lint:go:
+    dir: "{{.GO_DIR}}"
+    cmds:
+      - go vet ./...
+
+  lint:ts:
+    dir: "{{.TS_DIR}}"
+    cmds:
+      - npx tsc --noEmit
+
+  lint:rs:
+    dir: "{{.RS_DIR}}"
+    cmds:
+      - cargo clippy -- -D warnings
+
+  lint:php:
+    dir: "{{.PHP_DIR}}"
+    cmds:
+      - vendor/bin/phpstan analyse src/

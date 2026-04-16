@@ -1,0 +1,46 @@
+{
+  "id": "550e8400-e29b-41d4-a716-446655440000",
+  "session_id": "sess_abc123",
+  "timestamp": "2026-04-15T10:30:00Z",
+  "input": {
+    "prompt": "What is the standard deduction for 2025?",
+    "context": {
+      "jurisdiction": "US",
+      "filing_status": "single"
+    }
+  },
+  "advice": {
+    "domain": "tax-compliance",
+    "steering_text": "Cite IRS publication numbers. Flag if rule changed in 2025.",
+    "confidence": 0.91,
+    "version": "1.0",
+    "constraints": ["cite sources", "no speculation"],
+    "metadata": {
+      "model": "advisor-tax-v2.3"
+    }
+  },
+  "frontier": {
+    "model": "claude-sonnet-4-6",
+    "provider": "anthropic",
+    "output": "For tax year 2025, the standard deduction...",
+    "usage": {
+      "prompt_tokens": 342,
+      "completion_tokens": 156,
+      "total_tokens": 498
+    }
+  },
+  "reward": {
+    "score": 0.95,
+    "breakdown": {
+      "accuracy": 1.0,
+      "relevance": 0.9,
+      "safety": 1.0,
+      "efficiency": 0.9
+    }
+  },
+  "metadata": {
+    "duration_ms": 1830,
+    "advisor_model": "advisor-tax-v2.3",
+    "trace_version": "1.0"
+  }
+}
