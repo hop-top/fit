@@ -16,7 +16,7 @@ class ConformanceTest extends TestCase
         return dirname(__DIR__) . '/../spec/fixtures';
     }
 
-    private static function loadYaml(string $name): array
+    private function loadYaml(string $name): array
     {
         $path = self::fixturesDir() . '/' . $name;
         $content = file_get_contents($path);
@@ -24,7 +24,7 @@ class ConformanceTest extends TestCase
         // Since PHP doesn't ship with YAML by default, parse via
         //Symfony YAML or manually for these simple structures.
         // For conformance tests, use the JSON equivalent where available.
-        return yaml_parse($content) ?: self::simpleYamlParse($content);
+        return yaml_parse($content) ?: $this->simpleYamlParse($content);
     }
 
     private static function loadJson(string $name): array
@@ -37,7 +37,7 @@ class ConformanceTest extends TestCase
      * Minimal YAML-like parser for our fixture structures.
      * Handles top-level key: value, nested maps, and simple lists.
      */
-    private static function simpleYamlParse(string $content): array
+    private function simpleYamlParse(string $content): array
     {
         // Fall back to json if it parses
         $decoded = json_decode($content, true);

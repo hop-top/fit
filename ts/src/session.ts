@@ -30,7 +30,7 @@ export class Session {
     context: Record<string, unknown> = {},
   ): Promise<{ output: string; reward: Reward; trace: Trace }> {
     const sessionId = randomUUID();
-    const input = { prompt, ...context };
+    const input = { prompt, context };
 
     let advice: Advice;
     try {
@@ -46,7 +46,7 @@ export class Session {
 
     let reward: Reward;
     try {
-      reward = await this.scorer(output, context);
+      reward = await this.scorer.score(output, context);
     } catch {
       reward = { score: NaN, breakdown: {} };
     }
@@ -62,12 +62,5 @@ export class Session {
     };
 
     return { output, reward, trace };
-  }
-
-  private async scorer(
-    output: string,
-    context: Record<string, unknown>,
-  ): Promise<Reward> {
-    return this.scorer.score(output, context);
   }
 }

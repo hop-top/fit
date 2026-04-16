@@ -97,7 +97,7 @@ impl RewardScorer for CompositeScorer {
         let mut meta = HashMap::new();
         meta.insert(
             "scorers".into(),
-            serde_yaml::Value::Number(rewards.len().into()),
+            serde_yaml::Value::Number((rewards.len() as u64).into()),
         );
 
         Ok(Reward {

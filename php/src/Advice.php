@@ -14,4 +14,19 @@ readonly class Advice
         public array $metadata = [],
         public string $version = '1.0',
     ) {}
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function toArray(): array
+    {
+        return [
+            'domain' => $this->domain,
+            'steeringText' => $this->steeringText,
+            'confidence' => $this->confidence,
+            'constraints' => $this->constraints,
+            'metadata' => $this->metadata,
+            'version' => $this->version,
+        ];
+    }
 }

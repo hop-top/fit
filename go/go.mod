@@ -6,7 +6,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/spf13/cobra v1.10.2
 	gopkg.in/yaml.v3 v3.0.1
-	hop.top/kit v0.0.0
+	hop.top/kit v0.3.2-patch.3
 )
 
 require (
@@ -46,5 +46,3 @@ require (
 	golang.org/x/sys v0.43.0 // indirect
 	golang.org/x/text v0.36.0 // indirect
 )
-
-replace hop.top/kit => ../../../../kit/hops/main

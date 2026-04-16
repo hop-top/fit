@@ -2,6 +2,7 @@ package fit
 
 import (
 	"context"
+	"math"
 	"time"
 
 	"github.com/google/uuid"
@@ -55,9 +56,9 @@ func NewSession(advisor Advisor, adapter Adapter, scorer RewardScorer) *Session 
 // Run executes a one-shot session cycle.
 func (s *Session) Run(ctx context.Context, prompt string, contextMap map[string]any) (*SessionResult, error) {
 	sessionID := uuid.New().String()
-	input := map[string]any{"prompt": prompt}
-	for k, v := range contextMap {
-		input[k] = v
+	input := map[string]any{
+		"prompt":  prompt,
+		"context": contextMap,
 	}
 
 	// Advise
@@ -75,7 +76,7 @@ func (s *Session) Run(ctx context.Context, prompt string, contextMap map[string]
 	// Score
 	reward, err := s.Scorer.Score(output, contextMap)
 	if err != nil {
-		reward = &Reward{Score: 0, Breakdown: map[string]float64{}}
+		reward = &Reward{Score: math.NaN(), Breakdown: map[string]float64{}}
 	}
 
 	// Trace

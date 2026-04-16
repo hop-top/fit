@@ -160,18 +160,28 @@ where
     ) -> Result<SessionResult, FitError> {
         let session_id = uuid::Uuid::new_v4().to_string();
 
+        // Reset state so run() can be called multiple times (e.g. from run_multi_turn)
+        self.state = SessionState::Init;
+
         // Init -> Advise
         self.transition(SessionState::Advise)?;
 
-        // Build input map
+        // Build input map: { prompt: "...", context: { ... } }
         let mut input = HashMap::new();
         input.insert(
             "prompt".to_string(),
             serde_yaml::Value::String(prompt.to_string()),
         );
-        for (k, v) in &context {
-            input.insert(k.clone(), v.clone());
-        }
+        let context_value = serde_yaml::Value::Mapping(
+            context
+                .iter()
+                .map(|(k, v)| (serde_yaml::Value::String(k.clone()), v.clone()))
+                .collect(),
+        );
+        input.insert(
+            "context".to_string(),
+            context_value,
+        );
 
         // Advise: generate advice, fallback to empty on failure
         let advice = match self.advisor.generate_advice(input.clone()).await {
@@ -188,10 +198,10 @@ where
         // Frontier -> Score
         self.transition(SessionState::Score)?;
 
-        // Score: evaluate output, fallback to 0 on failure
+        // Score: evaluate output, fallback to NaN on failure
         let reward = match self.scorer.score(&output, &context) {
             Ok(r) => r,
-            Err(_) => Reward::new(0.0, HashMap::new()),
+            Err(_) => Reward::new(f64::NAN, HashMap::new()),
         };
 
         // Score -> Trace
@@ -223,8 +233,8 @@ where
 
         self.traces.push(trace.clone());
 
-        // Trace -> Done (one-shot always completes after first cycle)
-        self.transition(SessionState::Done)?;
+        // Note: Done transition is deferred to the caller (run_multi_turn or user)
+        // so run() can be reused in multi-turn loops.
 
         Ok(SessionResult {
             output,
@@ -261,6 +271,9 @@ where
                 break;
             }
         }
+
+        // Transition to Done after multi-turn loop completes
+        self.state = SessionState::Done;
 
         Ok(results)
     }

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { readFileSync } from "node:fs";
+import { readFileSync, existsSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { Advice, Reward, Trace } from "../src/types.js";
@@ -8,31 +8,11 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const FIXTURES = join(__dirname, "..", "..", "spec", "fixtures");
 
 function loadYAML(name: string): Record<string, unknown> {
-  // YAML is JSON-superset for our fixtures; use JSON parse
-  // for YAML-specific files we rely on the yaml-stub module
-  const raw = readFileSync(join(FIXTURES, name), "utf-8");
-  // Simple YAML parse: our fixtures are simple enough
-  // Use dynamic import for yaml if available, else JSON.parse for .json
-  if (name.endsWith(".json")) {
-    return JSON.parse(raw);
-  }
-  // For YAML, leverage the project's yaml-stub (JSON-based)
-  return JSON.parse(JSON.stringify(evalYaml(raw)));
+  return JSON.parse(readFileSync(join(FIXTURES, name), "utf-8"));
 }
 
 function loadJSON(name: string): Record<string, unknown> {
   return JSON.parse(readFileSync(join(FIXTURES, name), "utf-8"));
-}
-
-// Minimal YAML-like loader for our simple fixtures
-// (the project's yaml-stub uses JSON.stringify/parse, but our YAML fixtures
-// need actual YAML parsing. Since the project depends on no YAML library
-// in TS, we parse the JSON version for YAML fixtures in conformance tests.)
-function evalYaml(_raw: string): Record<string, unknown> {
-  // Our YAML fixtures have a corresponding understanding through the spec.
-  // For conformance, we test the JSON-equivalent data.
-  // The actual YAML parsing is tested through the trace module.
-  return {};
 }
 
 describe("Advice conformance", () => {
@@ -187,9 +167,8 @@ describe("Multi-turn session conformance", () => {
   it("loads session-multi fixture and verifies structure", () => {
     // Since TS has no YAML parser, verify the fixture file exists and
     // test the structural expectations against hardcoded values from spec
-    const fs = require("node:fs");
     const path = join(FIXTURES, "session-multi.yaml");
-    expect(fs.existsSync(path)).toBe(true);
+    expect(existsSync(path)).toBe(true);
 
     // Verify the multi-turn trace structure with typed data
     const steps: Trace[] = [

@@ -21,4 +21,25 @@ readonly class Trace
         public Reward $reward,
         public array $metadata = [],
     ) {}
+
+    /**
+     * Convert all public readonly properties to an associative array.
+     *
+     * Nested value objects (Advice, Reward) are converted recursively.
+     *
+     * @return array<string, mixed>
+     */
+    public function toArray(): array
+    {
+        return [
+            'id' => $this->id,
+            'sessionId' => $this->sessionId,
+            'timestamp' => $this->timestamp,
+            'input' => $this->input,
+            'advice' => $this->advice->toArray(),
+            'frontier' => $this->frontier,
+            'reward' => $this->reward->toArray(),
+            'metadata' => $this->metadata,
+        ];
+    }
 }

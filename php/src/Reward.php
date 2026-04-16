@@ -16,4 +16,16 @@ readonly class Reward
         public array $breakdown,
         public array $metadata = [],
     ) {}
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function toArray(): array
+    {
+        return [
+            'score' => $this->score,
+            'breakdown' => $this->breakdown,
+            'metadata' => $this->metadata,
+        ];
+    }
 }

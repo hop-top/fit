@@ -11,12 +11,6 @@ import (
 )
 
 func traceCmd() *cobra.Command {
-	var (
-		sessionID string
-		step      int
-		format    string
-	)
-
 	cmd := &cobra.Command{
 		Use:   "trace",
 		Short: "Inspect/convert trace files",
