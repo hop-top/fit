@@ -106,8 +106,7 @@ def _json_response(code: int, body: Any) -> tuple[dict[str, str], int, bytes]:
 def _build_app(advisor: Advisor) -> Any:
     """Return a WSGI-like callable using stdlib http.server."""
 
-    from http.server import BaseHTTPRequestHandler, HTTPServer
-    import threading
+    from http.server import BaseHTTPRequestHandler
 
     class Handler(BaseHTTPRequestHandler):
         _advisor: Advisor = advisor  # type: ignore[assignment]

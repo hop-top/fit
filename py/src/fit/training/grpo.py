@@ -138,7 +138,7 @@ class GRPOTrainer:
                 return [
                     self._reward_fn(
                         examples[i % len(examples)].context,
-                        completions[j] if j < len(completions) else "",
+                        examples[i % len(examples)].advice,
                         completions[j] if j < len(completions) else "",
                     )
                     for i, j in enumerate(range(len(completions)))
@@ -190,7 +190,6 @@ class GRPOTrainer:
 
         try:
             import torch
-            import torch.nn as nn
             from transformers import AutoModelForCausalLM, AutoTokenizer
         except ImportError as exc:
             raise ImportError(
@@ -220,6 +219,7 @@ class GRPOTrainer:
             rng.shuffle(indices)
 
             epoch_reward_samples: list[float] = []
+            num_batches = 0
             for batch_start in range(0, len(indices), cfg.batch_size):
                 batch_idx = indices[batch_start : batch_start + cfg.batch_size]
                 batch = [examples[i] for i in batch_idx]
@@ -269,10 +269,11 @@ class GRPOTrainer:
                 optimizer.step()
 
                 epoch_losses.append(loss.item())
+                num_batches += 1
 
             all_rewards.extend(epoch_reward_samples)
             avg_loss = (
-                statistics.mean(epoch_losses[-len(indices) :])
+                statistics.mean(epoch_losses[-num_batches:])
                 if epoch_losses
                 else 0.0
             )

@@ -1,7 +1,6 @@
 """Tests for fit.training.dataset — trace to training example conversion."""
 from __future__ import annotations
 
-import json
 from pathlib import Path
 
 import pytest

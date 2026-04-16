@@ -4,8 +4,6 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-import pytest
-
 from fit.training.export import ModelExporter
 from fit.training.grpo import TrainingResult
 
@@ -69,11 +67,21 @@ class TestModelExporter:
         exporter = ModelExporter(str(model_dir))
 
         # push_to_hub requires valid HF credentials and repo;
-        # just verify it doesn't crash on import / construction
+        # push_to_hub requires valid HF credentials and repo
         try:
             exporter.push_to_hub("test/repo", _training_result())
-        except (ImportError, Exception):
-            pass  # expected: no credentials or repo doesn't exist
+        except ImportError as exc:
+            assert "huggingface" in str(exc).lower()
+        except Exception as exc:
+            message = str(exc).lower()
+            expected_markers = (
+                "401", "403", "404", "unauthorized", "forbidden",
+                "not found", "credentials", "authentication", "token",
+                "repo", "repository",
+            )
+            assert any(m in message for m in expected_markers), (
+                f"Unexpected push_to_hub failure: {exc}"
+            )
 
     def test_copy_artifacts(self, tmp_path: Path) -> None:
         model_dir = tmp_path / "model"

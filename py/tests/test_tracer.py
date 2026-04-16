@@ -3,7 +3,6 @@ from __future__ import annotations
 
 import json
 import sqlite3
-import tempfile
 from pathlib import Path
 
 import pytest
@@ -143,59 +142,34 @@ class TestLoadBatch:
 
 
 class TestFilter:
-    def _make_ingester(self) -> TraceIngester:
-        traces = [
-            {**SAMPLE_TRACE, "id": "a", "advice": {**SAMPLE_TRACE["advice"], "domain": "tax"}},
-            {**SAMPLE_TRACE, "id": "b", "advice": {**SAMPLE_TRACE["advice"], "domain": "legal"}},
-            {
-                **SAMPLE_TRACE,
-                "id": "c",
-                "advice": {**SAMPLE_TRACE["advice"], "domain": "tax"},
-                "metadata": {"tenant": "acme"},
-            },
-        ]
-        return TraceIngester().load_batch(
-            [], format="auto"
-        )
-        # manually add parsed records
-
-    def test_filter_by_domain(self) -> None:
+    def test_filter_by_domain(self, tmp_path: Path) -> None:
         traces = [
             {**SAMPLE_TRACE, "id": "a", "advice": {**SAMPLE_TRACE["advice"], "domain": "tax"}},
             {**SAMPLE_TRACE, "id": "b", "advice": {**SAMPLE_TRACE["advice"], "domain": "legal"}},
         ]
-        tmp = Path(__file__).parent / "_tmp_filter_test.jsonl"
+        tmp = tmp_path / "filter_test.jsonl"
         tmp.write_text("\n".join(json.dumps(t) for t in traces), encoding="utf-8")
-        try:
-            ingester = TraceIngester().load_jsonl(tmp).filter(domain="tax")
-            assert ingester.count() == 1
-            assert ingester.to_trace_records()[0].id == "a"
-        finally:
-            tmp.unlink(missing_ok=True)
+        ingester = TraceIngester().load_jsonl(tmp).filter(domain="tax")
+        assert ingester.count() == 1
+        assert ingester.to_trace_records()[0].id == "a"
 
-    def test_filter_by_tenant(self) -> None:
+    def test_filter_by_tenant(self, tmp_path: Path) -> None:
         traces = [
             {**SAMPLE_TRACE, "id": "a", "metadata": {"tenant": "acme"}},
             {**SAMPLE_TRACE, "id": "b", "metadata": {"tenant": "globex"}},
         ]
-        tmp = Path(__file__).parent / "_tmp_tenant_test.jsonl"
+        tmp = tmp_path / "tenant_test.jsonl"
         tmp.write_text("\n".join(json.dumps(t) for t in traces), encoding="utf-8")
-        try:
-            ingester = TraceIngester().load_jsonl(tmp).filter(tenant="acme")
-            assert ingester.count() == 1
-        finally:
-            tmp.unlink(missing_ok=True)
+        ingester = TraceIngester().load_jsonl(tmp).filter(tenant="acme")
+        assert ingester.count() == 1
 
-    def test_filter_non_mutating(self) -> None:
-        tmp = Path(__file__).parent / "_tmp_nonmut.jsonl"
+    def test_filter_non_mutating(self, tmp_path: Path) -> None:
+        tmp = tmp_path / "nonmut.jsonl"
         tmp.write_text(json.dumps(SAMPLE_TRACE), encoding="utf-8")
-        try:
-            base = TraceIngester().load_jsonl(tmp)
-            filtered = base.filter(domain="nonexistent")
-            assert base.count() == 1
-            assert filtered.count() == 0
-        finally:
-            tmp.unlink(missing_ok=True)
+        base = TraceIngester().load_jsonl(tmp)
+        filtered = base.filter(domain="nonexistent")
+        assert base.count() == 1
+        assert filtered.count() == 0
 
 
 class TestDetectFormat:

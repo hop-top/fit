@@ -62,7 +62,7 @@ class ModelExporter:
         # GGUF conversion requires llama.cpp's convert script or
         # the gguf library. Both are optional heavy deps.
         try:
-            from gguf import GGUFWriter  # type: ignore[import-untyped]
+            from gguf import GGUFWriter as _GGUFWriter  # type: ignore[import-untyped]  # noqa: F401
         except ImportError:
             # Fallback: copy if already a .gguf file
             existing = list(self._model_path.glob("*.gguf"))
@@ -88,8 +88,7 @@ class ModelExporter:
         out.parent.mkdir(parents=True, exist_ok=True)
 
         try:
-            import torch  # noqa: F401
-            from transformers import AutoModelForCausalLM, AutoTokenizer
+            __import__("transformers")
         except ImportError:
             raise ImportError(
                 "ONNX export requires torch and transformers. "
@@ -104,7 +103,7 @@ class ModelExporter:
 
         model = ORTModelForCausalLM.from_pretrained(str(self._model_path))
         model.save_pretrained(str(out.parent))
-        return out
+        return out.parent / "model.onnx"
 
     def _onnx_export_torch(self, output_path: Path) -> Path:
         """Fallback ONNX export using torch.onnx.export."""
@@ -118,13 +117,24 @@ class ModelExporter:
         input_ids = dummy["input_ids"]
         attention_mask = dummy.get("attention_mask", None)
 
+        onnx_inputs = (input_ids,)
+        input_names = ["input_ids"]
+        dynamic_axes: dict[str, dict[int, str]] = {
+            "input_ids": {0: "batch", 1: "seq"},
+            "logits": {0: "batch", 1: "seq"},
+        }
+        if attention_mask is not None:
+            onnx_inputs = (input_ids, attention_mask)
+            input_names.append("attention_mask")
+            dynamic_axes["attention_mask"] = {0: "batch", 1: "seq"}
+
         torch.onnx.export(
             model,
-            (input_ids, attention_mask) if attention_mask is not None else (input_ids,),
+            onnx_inputs,
             str(output_path),
-            input_names=["input_ids"],
+            input_names=input_names,
             output_names=["logits"],
-            dynamic_axes={"input_ids": {0: "batch", 1: "seq"}, "logits": {0: "batch", 1: "seq"}},
+            dynamic_axes=dynamic_axes,
             opset_version=14,
         )
         return output_path
