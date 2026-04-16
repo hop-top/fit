@@ -176,6 +176,11 @@ export class Session {
     prompt: string,
     context: Record<string, unknown>,
   ): Promise<SessionResult[]> {
+    // Short-circuit: 0-step session produces no results and no state change.
+    if (this.config.maxSteps === 0) {
+      return [];
+    }
+
     const results: SessionResult[] = [];
 
     while (this.step < this.config.maxSteps) {

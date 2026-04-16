@@ -1,7 +1,9 @@
 use std::collections::HashMap;
+use std::sync::{Arc, Mutex};
 
 use fit::{
-    Adapter, Advice, FitError, Reward, RewardScorer, Session, SessionConfig, SessionMode,
+    Advisor, Adapter, Advice, FitError, Reward, RewardScorer, Session, SessionConfig,
+    SessionMode,
 };
 use async_trait::async_trait;
 
@@ -148,4 +150,93 @@ async fn multi_turn_zero_steps_returns_empty() {
     assert!(results.is_empty(), "max_steps=0 should produce no results");
     // Session should end in Done state
     assert_eq!(*session.state(), fit::SessionState::Done);
+}
+
+/// Advisor that captures the input it receives on each call.
+/// Used to verify context contents at advisor invocation time.
+struct CaptureAdvisor {
+    captures: Arc<Mutex<Vec<HashMap<String, serde_yaml::Value>>>>,
+}
+
+impl CaptureAdvisor {
+    fn new(captures: Arc<Mutex<Vec<HashMap<String, serde_yaml::Value>>>>) -> Self {
+        Self { captures }
+    }
+}
+
+#[async_trait]
+impl Advisor for CaptureAdvisor {
+    async fn generate_advice(
+        &self,
+        input: HashMap<String, serde_yaml::Value>,
+    ) -> Result<Advice, FitError> {
+        self.captures.lock().unwrap().push(input);
+        Ok(Advice::new("generic", "captured", 0.5))
+    }
+
+    fn model_id(&self) -> String {
+        "capture".to_string()
+    }
+}
+
+/// Regression: step context must be available to advisor BEFORE the call.
+///
+/// Before fix: run_multi_turn inserted `step` into context AFTER
+/// run_with_session_id returned. This meant the advisor on step N
+/// did not see `step: N` in its context -- the value was always
+/// missing (first call) or lagging by 1 (subsequent calls).
+///
+/// The fix moves context.insert("step", ...) to BEFORE the
+/// run_with_session_id call so the advisor sees the correct step.
+#[tokio::test]
+async fn multi_turn_step_available_in_context_before_advisor_call() {
+    let captures: Arc<Mutex<Vec<HashMap<String, serde_yaml::Value>>>> =
+        Arc::new(Mutex::new(vec![]));
+    let advisor = CaptureAdvisor::new(captures.clone());
+    let adapter = EchoAdapter;
+    let scorer = LowScorer;
+
+    let config = SessionConfig {
+        mode: SessionMode::MultiTurn,
+        max_steps: 2,
+        reward_threshold: 1.0, // never reached
+    };
+
+    let mut session = Session::new(advisor, adapter, scorer).with_config(config);
+    session
+        .run_multi_turn("test prompt", HashMap::new())
+        .await
+        .expect("multi-turn should succeed");
+
+    let caps = captures.lock().unwrap();
+    assert_eq!(caps.len(), 2, "expected 2 advisor calls");
+
+    // First advisor call: step should be 0 (current turn number
+    // before any increment)
+    let ctx0 = &caps[0];
+    let step0 = ctx0
+        .get("context")
+        .and_then(|v| v.as_mapping())
+        .and_then(|m| m.get(&serde_yaml::Value::String("step".into())))
+        .and_then(|v| v.as_u64());
+    assert_eq!(
+        step0,
+        Some(0),
+        "first advisor call must see step=0 in context, got {:?}",
+        step0
+    );
+
+    // Second advisor call: step should be 1
+    let ctx1 = &caps[1];
+    let step1 = ctx1
+        .get("context")
+        .and_then(|v| v.as_mapping())
+        .and_then(|m| m.get(&serde_yaml::Value::String("step".into())))
+        .and_then(|v| v.as_u64());
+    assert_eq!(
+        step1,
+        Some(1),
+        "second advisor call must see step=1 in context, got {:?}",
+        step1
+    );
 }

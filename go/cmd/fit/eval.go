@@ -117,3 +117,13 @@ func loadDataset(path string) ([]evalCase, error) {
 		return nil, fmt.Errorf("unsupported dataset format: %s (use .json)", ext)
 	}
 }
+
+// stubScorer is a placeholder scorer for evaluation runs.
+type stubScorer struct{}
+
+func (s *stubScorer) Score(_ string, _ map[string]any) (*fit.Reward, error) {
+	return &fit.Reward{
+		Score:     0.5,
+		Breakdown: map[string]float64{"accuracy": 0.5, "relevance": 0.5},
+	}, nil
+}

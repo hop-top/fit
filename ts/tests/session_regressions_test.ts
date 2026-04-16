@@ -266,6 +266,25 @@ describe("Session regressions", () => {
     expect(session.getState()).toBe(SessionState.Done);
   });
 
+  it("multi-turn maxSteps=0 returns empty array without throwing", async () => {
+    // Regression: maxSteps=0 skipped the while loop then called
+    // transition(Done) from Init state, which is not in VALID_TRANSITIONS.
+    const advisor = new StubAdvisor(baseAdvice);
+    const adapter = new StubAdapter("out");
+    const scorer = new ConstantScorer(0.5);
+
+    const session = new Session(advisor, adapter, scorer, {
+      mode: "multi-turn",
+      maxSteps: 0,
+      rewardThreshold: 1.0,
+    });
+
+    // Must not throw; returns empty results
+    const results = await session.run("prompt");
+    expect(Array.isArray(results)).toBe(true);
+    expect(results).toHaveLength(0);
+  });
+
   it("fallback advice has all fields when advisor throws", async () => {
     // Regression: catch block omitted version, constraints, metadata
     const advisor = new ThrowingAdvisor();

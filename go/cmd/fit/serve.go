@@ -30,10 +30,9 @@ advice conforming to advice-format-v1.`,
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			advisor := &stubAdvisor{model: advisorModel}
-			scorer := &stubScorer{}
 
 			mux := http.NewServeMux()
-			mux.HandleFunc("POST /advise", handleAdvise(advisor, scorer, timeout))
+			mux.HandleFunc("POST /advise", handleAdvise(advisor, timeout))
 
 			srv := &http.Server{
 				Addr:         addr,
@@ -72,7 +71,6 @@ advice conforming to advice-format-v1.`,
 
 func handleAdvise(
 	advisor fit.Advisor,
-	scorer fit.RewardScorer,
 	timeoutMs int,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -110,13 +108,3 @@ func (a *stubAdvisor) GenerateAdvice(_ context.Context, input map[string]any) (*
 }
 
 func (a *stubAdvisor) ModelID() string { return a.model }
-
-// stubScorer is a placeholder until real scorer implementations land.
-type stubScorer struct{}
-
-func (s *stubScorer) Score(_ string, _ map[string]any) (*fit.Reward, error) {
-	return &fit.Reward{
-		Score:     0.5,
-		Breakdown: map[string]float64{"accuracy": 0.5, "relevance": 0.5},
-	}, nil
-}

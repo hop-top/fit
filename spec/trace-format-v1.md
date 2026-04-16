@@ -19,6 +19,7 @@ advice:
   domain: string
   steering_text: string
   confidence: float
+  version: "1.0"
   constraints: [string]
   metadata: {}
 
@@ -65,6 +66,7 @@ advice:
   domain: "tax-compliance"
   steering_text: "Cite IRS publication numbers. Flag if rule changed in 2025."
   confidence: 0.91
+  version: "1.0"
   constraints: ["cite sources", "no speculation"]
   metadata:
     model: "advisor-tax-v2.3"
@@ -111,6 +113,7 @@ advice:
     Search for related usages of the parser function first.
     Apply minimal patch. Run cargo test after edit.
   confidence: 0.78
+  version: "1.0"
   constraints: ["no changes outside src/parser.rs"]
   metadata:
     model: "advisor-swe-v1.1"

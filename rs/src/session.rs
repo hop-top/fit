@@ -279,17 +279,20 @@ where
         }
 
         loop {
+            // Insert step into context BEFORE the advisor call so the
+            // advisor sees the current turn number (not a stale/missing
+            // value). self.step is 0-indexed and incremented inside
+            // run_with_session_id after each step completes.
+            context.insert(
+                "step".into(),
+                serde_yaml::Value::Number((self.step as u64).into()),
+            );
+
             let result = self
                 .run_with_session_id(&current_prompt, context.clone(), &session_id)
                 .await?;
             let done = result.reward.score >= self.config.reward_threshold
                 || self.step >= self.config.max_steps;
-
-            // Collect observations for next turn
-            context.insert(
-                "step".into(),
-                serde_yaml::Value::Number((self.step as u64).into()),
-            );
 
             results.push(result);
 
