@@ -89,6 +89,23 @@ describe("CompositeScorer regressions", () => {
     expect(result.breakdown).toHaveProperty("b");
   });
 
+  // PR#19: zero-weight composite with null child must return null, not 0.0
+  it("returns null (not 0.0) when weights are zero and a child score is null", async () => {
+    const nullScorer = new StubScorer({
+      score: null,
+      breakdown: { failed: 0.0 },
+    });
+    const okScorer = new StubScorer({
+      score: 0.5,
+      breakdown: { ok: 0.5 },
+    });
+    const scorer = new CompositeScorer([nullScorer, okScorer], [0, 0]);
+    const result = await scorer.score("test", {});
+
+    expect(result.score).toBeNull();
+    expect(result.metadata.null_reason).toBe("child_scorer_null");
+  });
+
   it("returns numeric score when all child scorers have numeric scores", async () => {
     const a = new StubScorer({ score: 0.8, breakdown: { x: 0.8 } });
     const b = new StubScorer({ score: 0.6, breakdown: { y: 0.6 } });

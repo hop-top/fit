@@ -75,6 +75,23 @@ class CompositeScorerNullScoreRegressionTest extends TestCase
     }
 
     /**
+     * PR#19: zero-weight composite with null child must return
+     * null, not 0.0. Null check must happen before totalWeight
+     * short-circuit.
+     */
+    public function testZeroWeightWithNullChildReturnsNull(): void
+    {
+        $nullScorer = new NullScorer();
+        $okScorer = new FixedValueScorer(0.5, ['ok' => 0.5]);
+        $scorer = new CompositeScorer([$nullScorer, $okScorer], [0.0, 0.0]);
+
+        $result = $scorer->score('test', []);
+
+        $this->assertNull($result->score);
+        $this->assertSame('child_score_is_null', $result->metadata['error'] ?? null);
+    }
+
+    /**
      * PR#16: No null scores must still compute weighted average.
      */
     public function testNoNullStillWorks(): void

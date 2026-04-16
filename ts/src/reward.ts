@@ -29,15 +29,8 @@ export class CompositeScorer implements RewardScorer {
     const rewards = await Promise.all(
       this.scorers.map((s) => s.score(output, context)),
     );
-    const totalWeight = this.weights.reduce((a, b) => a + b, 0);
-    if (totalWeight === 0) {
-      return {
-        score: 0.0,
-        breakdown: {},
-        metadata: { scorers: rewards.length },
-      };
-    }
     // If any scorer returns null score, propagate null for the composite.
+    // Must check BEFORE totalWeight short-circuit to preserve failure semantics.
     if (rewards.some((r) => r.score === null)) {
       const mergedBreakdown: Record<string, number> = {};
       for (const r of rewards) {
@@ -47,6 +40,14 @@ export class CompositeScorer implements RewardScorer {
         score: null,
         breakdown: mergedBreakdown,
         metadata: { scorers: rewards.length, null_reason: "child_scorer_null" },
+      };
+    }
+    const totalWeight = this.weights.reduce((a, b) => a + b, 0);
+    if (totalWeight === 0) {
+      return {
+        score: 0.0,
+        breakdown: {},
+        metadata: { scorers: rewards.length },
       };
     }
     const combined = rewards.reduce(
