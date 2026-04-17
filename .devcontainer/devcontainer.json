@@ -19,7 +19,7 @@
         "rust-lang.rust-analyzer",
         "bmewburn.vscode-intelephense-client",
         "redhat.vscode-yaml",
-        "task.vscode-task"
+        "ms-vscode.makefile-tools"
       ],
       "settings": {
         "go.gopath": "/home/dev/go",
@@ -27,6 +27,6 @@
       }
     }
   },
-  "postCreateCommand": "task install",
+  "postCreateCommand": "make install",
   "forwardPorts": [8080]
 }

@@ -2,18 +2,8 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
 
 import pytest
-
-trl = pytest.importorskip("trl")
-
-import torch
-
-from fit.training.dataset import DatasetBuilder, FitDataset
-from fit.training.export import ModelExporter
-from fit.training.grpo import GRPOConfig, GRPOTrainer
-from fit.training.tracer import TraceIngester
 
 from .conftest import write_jsonl
 from .converters import ultrafeedback_to_traces
@@ -103,8 +93,12 @@ class TestTRLGRPO:
     """T-0086: TRL GRPO training on UltraFeedback traces."""
 
     @pytest.fixture
-    def uf_dataset(self, tmp_path: Path) -> FitDataset:
+    def uf_dataset(self, tmp_path: Path):
         """Build FitDataset from 5k UltraFeedback traces."""
+        pytest.importorskip("trl")
+        from fit.training.dataset import DatasetBuilder
+        from fit.training.tracer import TraceIngester
+
         rows = [
             {
                 "chosen": [
@@ -136,8 +130,10 @@ class TestTRLGRPO:
         return DatasetBuilder(records).build(normalize_rewards=True)
 
     def test_trl_grpo_convergence(
-        self, uf_dataset: FitDataset, tmp_path: Path
+        self, uf_dataset, tmp_path: Path
     ) -> None:
+        from fit.training.grpo import GRPOConfig, GRPOTrainer
+
         config = GRPOConfig(
             base_model="Qwen/Qwen2-0.5B",
             learning_rate=1e-5,
@@ -156,8 +152,11 @@ class TestTRLGRPO:
         assert result.reward_stats["count"] > 0
 
     def test_trl_grpo_export_safetensors(
-        self, uf_dataset: FitDataset, tmp_path: Path
+        self, uf_dataset, tmp_path: Path
     ) -> None:
+        from fit.training.export import ModelExporter
+        from fit.training.grpo import GRPOConfig, GRPOTrainer
+
         config = GRPOConfig(
             base_model="Qwen/Qwen2-0.5B",
             learning_rate=1e-5,
@@ -182,8 +181,10 @@ class TestTRLGRPO:
         ).exists()
 
     def test_trl_grpo_multi_dim_reward_stats(
-        self, uf_dataset: FitDataset, tmp_path: Path
+        self, uf_dataset, tmp_path: Path
     ) -> None:
+        from fit.training.grpo import GRPOConfig, GRPOTrainer
+
         config = GRPOConfig(
             base_model="Qwen/Qwen2-0.5B",
             learning_rate=1e-5,

@@ -23,7 +23,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Go
 RUN curl -fsSL "https://go.dev/dl/go${GO_VERSION}.linux-$(dpkg --print-architecture).tar.gz" \
       | tar -C /usr/local -xz
-ENV PATH="/usr/local/go/bin:/root/go/bin:${PATH}"
+ENV GOPATH="/home/dev/go"
+ENV PATH="/usr/local/go/bin:${GOPATH}/bin:${PATH}"
 
 # Node + pnpm
 RUN curl -fsSL https://deb.nodesource.com/setup_${NODE_VERSION}.x | bash - \
@@ -39,10 +40,15 @@ RUN add-apt-repository ppa:deadsnakes/ppa \
       python3-pip \
     && rm -rf /var/lib/apt/lists/*
 
-# Rust
+# Non-root user (created early so Rust installs under /home/dev)
+RUN useradd -m -s /bin/bash -u 1000 dev
+
+# Rust (installed as dev user)
+USER dev
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \
       | sh -s -- -y --default-toolchain stable --component clippy
-ENV PATH="/root/.cargo/bin:${PATH}"
+ENV PATH="/home/dev/.cargo/bin:${PATH}"
+USER root
 
 # PHP + Composer
 RUN add-apt-repository ppa:ondrej/php \
@@ -64,8 +70,6 @@ RUN curl -fsSL \
       "https://github.com/mikefarah/yq/releases/latest/download/yq_linux_$(dpkg --print-architecture)" \
       -o /usr/local/bin/yq && chmod +x /usr/local/bin/yq
 
-# Non-root user
-RUN useradd -m -s /bin/bash -u 1000 dev
 USER dev
 
 WORKDIR /workspace

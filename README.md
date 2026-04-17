@@ -152,7 +152,7 @@ docker compose up -d
 docker compose exec dev bash
 
 # Run tests inside dev container
-task check
+make check
 ```
 
 ### VS Code / Codespaces devcontainer
@@ -164,10 +164,10 @@ Python, Rust, PHP, and all project dependencies automatically.
 ## Building
 
 ```bash
-task check        # lint + test all ports
-task test:py      # python only
-task test:go      # go only
-task lint         # lint all
+make check        # lint + test all ports
+make test\:py     # python only
+make test\:go     # go only
+make lint         # lint all
 ```
 
 ## Spec

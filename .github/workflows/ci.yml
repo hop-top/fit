@@ -151,4 +151,4 @@ jobs:
           tags: fit-coach:ci
 
       - name: Verify fit-coach image
-        run: docker run --rm fit-coach:ci --help || true
+        run: docker run --rm fit-coach:ci --version

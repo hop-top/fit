@@ -6,10 +6,10 @@ from typing import Any
 
 import pytest
 
-from fit.training.dataset import DatasetBuilder, FitDataset
+from fit.training.dataset import DatasetBuilder
 from fit.training.tracer import TraceIngester
 
-from .conftest import generate_traces, write_jsonl, write_yaml_dir
+from .conftest import write_jsonl, write_yaml_dir
 
 
 class TestSmokeJSONL:

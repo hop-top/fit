@@ -2,16 +2,8 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
 
 import pytest
-
-torch = pytest.importorskip("torch")
-
-from fit.training.dataset import DatasetBuilder, FitDataset, TrainingExample
-from fit.training.export import ModelExporter
-from fit.training.grpo import GRPOConfig, GRPOTrainer, TrainingResult
-from fit.training.tracer import TraceIngester
 
 from .conftest import write_jsonl
 from .converters import hh_rlhf_to_traces
@@ -90,8 +82,12 @@ class TestSimplifiedGRPO:
     """T-0084: simplified GRPO training on hh-rlhf traces."""
 
     @pytest.fixture
-    def hh_dataset(self, tmp_path: Path) -> FitDataset:
+    def hh_dataset(self, tmp_path: Path):
         """Build FitDataset from 1k mock hh-rlhf rows."""
+        pytest.importorskip("torch")
+        from fit.training.dataset import DatasetBuilder
+        from fit.training.tracer import TraceIngester
+
         rows = [
             {
                 "chosen": (
@@ -115,8 +111,11 @@ class TestSimplifiedGRPO:
         return DatasetBuilder(records).build(normalize_rewards=False)
 
     def test_simplified_grpo_loss_decreases(
-        self, hh_dataset: FitDataset, tmp_path: Path
+        self, hh_dataset, tmp_path: Path
     ) -> None:
+        import torch
+        from fit.training.grpo import GRPOConfig, GRPOTrainer
+
         config = GRPOConfig(
             base_model="Qwen/Qwen2-0.5B",
             learning_rate=5e-5,
@@ -153,8 +152,11 @@ class TestSimplifiedGRPO:
             )
 
     def test_simplified_grpo_model_card(
-        self, hh_dataset: FitDataset, tmp_path: Path
+        self, hh_dataset, tmp_path: Path
     ) -> None:
+        from fit.training.export import ModelExporter
+        from fit.training.grpo import GRPOConfig, GRPOTrainer
+
         config = GRPOConfig(
             base_model="Qwen/Qwen2-0.5B",
             learning_rate=5e-5,

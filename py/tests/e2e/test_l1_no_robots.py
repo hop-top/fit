@@ -2,12 +2,8 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
 
 import pytest
-
-from fit.training.dataset import DatasetBuilder
-from fit.training.tracer import TraceIngester
 
 from .conftest import write_jsonl
 from .converters import no_robots_to_traces, trace_dict
@@ -61,14 +57,16 @@ class TestNoRobotsConverterSchema:
 
 # --- T-0082: full e2e with HF download ---
 
-datasets = pytest.importorskip("datasets")
-
 
 @pytest.mark.slow
 class TestNoRobotsIngest:
     """E2E ingestion from real HuggingFaceH4/no_robots dataset."""
 
     def test_no_robots_ingest_and_split(self, tmp_path: Path) -> None:
+        datasets = pytest.importorskip("datasets")
+        from fit.training.dataset import DatasetBuilder
+        from fit.training.tracer import TraceIngester
+
         ds = datasets.load_dataset(
             "HuggingFaceH4/no_robots",
             split="train",
@@ -101,6 +99,7 @@ class TestNoRobotsIngest:
         assert filtered.count() > 0
 
     def test_no_robots_category_distribution(self) -> None:
+        datasets = pytest.importorskip("datasets")
         ds = datasets.load_dataset(
             "HuggingFaceH4/no_robots",
             split="train",
