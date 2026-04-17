@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Hop\Fit;
+namespace HopTop\Fit;
 
 /**
  * Exact-match scorer: returns 1.0 if output matches expected, else 0.0.

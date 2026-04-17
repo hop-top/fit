@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Hop\Fit;
+namespace HopTop\Fit;
 
 enum SessionState: string
 {

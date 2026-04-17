@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Hop\Fit\Tests;
+namespace HopTop\Fit\Tests;
 
-use Hop\Fit\Advice;
-use Hop\Fit\Reward;
-use Hop\Fit\Trace;
+use HopTop\Fit\Advice;
+use HopTop\Fit\Reward;
+use HopTop\Fit\Trace;
 use PHPUnit\Framework\TestCase;
 
 class SerializationRegressionsTest extends TestCase
@@ -50,7 +50,7 @@ class SerializationRegressionsTest extends TestCase
     // Issue 5 regression: Session.run() must nest context under input.context
     public function testSessionInputNestsContextProperly(): void
     {
-        $advisor = new class implements \Hop\Fit\AdvisorInterface {
+        $advisor = new class implements \HopTop\Fit\AdvisorInterface {
             public array $receivedInput = [];
             public function generateAdvice(array $input): Advice
             {
@@ -62,20 +62,20 @@ class SerializationRegressionsTest extends TestCase
                 return 'test-advisor';
             }
         };
-        $adapter = new class implements \Hop\Fit\AdapterInterface {
+        $adapter = new class implements \HopTop\Fit\AdapterInterface {
             public function call(string $prompt, Advice $advice): array
             {
                 return ['output', ['model' => 'test']];
             }
         };
-        $scorer = new class implements \Hop\Fit\RewardScorerInterface {
+        $scorer = new class implements \HopTop\Fit\RewardScorerInterface {
             public function score(string $output, array $context): Reward
             {
                 return new Reward(score: 0.5, breakdown: []);
             }
         };
 
-        $session = new \Hop\Fit\Session($advisor, $adapter, $scorer);
+        $session = new \HopTop\Fit\Session($advisor, $adapter, $scorer);
         $context = ['jurisdiction' => 'US', 'filing_status' => 'single'];
         $session->run('What is the deduction?', $context);
 

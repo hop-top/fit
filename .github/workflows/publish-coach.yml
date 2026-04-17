@@ -1,0 +1,161 @@
+name: Publish Coach
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  check-tag:
+    runs-on: ubuntu-latest
+    outputs:
+      is-coach: ${{ steps.check.outputs.is-coach }}
+      version: ${{ steps.check.outputs.version }}
+    steps:
+      - name: Check tag prefix
+        id: check
+        env:
+          TAG: ${{ github.event.release.tag_name }}
+        run: |
+          if [[ "$TAG" == coach-v* ]]; then
+            echo "is-coach=true" >> "$GITHUB_OUTPUT"
+            echo "version=${TAG#coach-v}" >> "$GITHUB_OUTPUT"
+          else
+            echo "is-coach=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  npm:
+    name: "@hop-top/fit-coach -> npm"
+    needs: check-tag
+    if: needs.check-tag.outputs.is-coach == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          registry-url: https://registry.npmjs.org
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Install + build
+        working-directory: fit-coach/ts
+        run: |
+          pnpm install --ignore-workspace --frozen-lockfile
+          pnpm run build
+
+      - name: Verify version
+        working-directory: fit-coach/ts
+        env:
+          EXPECTED: ${{ needs.check-tag.outputs.version }}
+        run: |
+          ACTUAL=$(node -p "require('./package.json').version")
+          if [ "$ACTUAL" != "$EXPECTED" ]; then
+            echo "::error::package.json version ($ACTUAL) != tag ($EXPECTED)"
+            exit 1
+          fi
+
+      - name: Publish
+        working-directory: fit-coach/ts
+        run: npm publish --provenance --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+  pypi:
+    name: hop-top-fit-coach -> PyPI
+    needs: check-tag
+    if: needs.check-tag.outputs.is-coach == 'true'
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/project/hop-top-fit-coach/
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Build
+        working-directory: fit-coach/py
+        run: |
+          pip install build
+          python -m build
+
+      - name: Verify version
+        working-directory: fit-coach/py
+        env:
+          EXPECTED: ${{ needs.check-tag.outputs.version }}
+        run: |
+          ACTUAL=$(python -c "
+          import tomllib
+          with open('pyproject.toml', 'rb') as f:
+              print(tomllib.load(f)['project']['version'])
+          ")
+          if [ "$ACTUAL" != "$EXPECTED" ]; then
+            echo "::error::pyproject.toml version ($ACTUAL) != tag ($EXPECTED)"
+            exit 1
+          fi
+
+      - name: Publish
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: fit-coach/py/dist/
+
+  crates:
+    name: hop-top-fit-coach -> crates.io
+    needs: check-tag
+    if: needs.check-tag.outputs.is-coach == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Verify version
+        working-directory: fit-coach/rs
+        env:
+          EXPECTED: ${{ needs.check-tag.outputs.version }}
+        run: |
+          ACTUAL=$(cargo metadata --no-deps --format-version 1 \
+            | jq -r '.packages[0].version')
+          if [ "$ACTUAL" != "$EXPECTED" ]; then
+            echo "::error::Cargo.toml version ($ACTUAL) != tag ($EXPECTED)"
+            exit 1
+          fi
+
+      - name: Publish
+        working-directory: fit-coach/rs
+        run: cargo publish
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+
+  packagist:
+    name: hop-top/fit-coach -> Packagist
+    needs: check-tag
+    if: needs.check-tag.outputs.is-coach == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.3"
+          tools: composer:v2
+
+      - name: Validate
+        working-directory: fit-coach/php
+        run: composer validate --strict
+
+      - name: Ping Packagist
+        env:
+          PACKAGIST_TOKEN: ${{ secrets.PACKAGIST_TOKEN }}
+        run: |
+          if [ -n "$PACKAGIST_TOKEN" ]; then
+            curl -s -X POST \
+              "https://packagist.org/api/update-package?username=hop-top&apiToken=${PACKAGIST_TOKEN}" \
+              -d '{"repository":{"url":"https://github.com/hop-top/fit"}}'
+          else
+            echo "::notice::PACKAGIST_TOKEN not set; relying on webhook"
+          fi

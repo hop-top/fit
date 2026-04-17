@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace Hop\Fit\Tests;
+namespace HopTop\Fit\Tests;
 
-use Hop\Fit\Advice;
-use Hop\Fit\AdapterInterface;
-use Hop\Fit\AdvisorInterface;
-use Hop\Fit\Reward;
-use Hop\Fit\RewardScorerInterface;
-use Hop\Fit\Session;
+use HopTop\Fit\Advice;
+use HopTop\Fit\AdapterInterface;
+use HopTop\Fit\AdvisorInterface;
+use HopTop\Fit\Reward;
+use HopTop\Fit\RewardScorerInterface;
+use HopTop\Fit\Session;
 use PHPUnit\Framework\TestCase;
 
 class UuidRegressionTest extends TestCase
