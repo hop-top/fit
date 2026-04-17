@@ -126,7 +126,7 @@ def _build_app(advisor: Advisor) -> Any:
         def log_message(self, fmt: str, *args: Any) -> None:
             print(f"[serve] {fmt % args}", file=sys.stderr)
 
-        def _read_body(self) -> dict[str, Any]:
+        def _read_body(self) -> Any:
             length = int(self.headers.get("Content-Length", 0))
             if length == 0:
                 return {}
