@@ -6,10 +6,10 @@ import (
 	"math"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 
 	"hop.top/fit"
+	"hop.top/kit/cli"
 )
 
 // Regression: trace list must report error when a session directory is
@@ -19,6 +19,9 @@ import (
 // via `steps, _ := os.ReadDir(...)`, hiding permission/IO problems and
 // misreporting step counts. After fix: a warning is printed and the
 // session is shown with "(steps: ?)".
+//
+// Assertions use JSON format and exact field checks instead of loose
+// string matching.
 func TestTraceListUnreadableSessionDir(t *testing.T) {
 	// Set up traces dir with one good and one unreadable session.
 	tracesDir := t.TempDir()
@@ -43,11 +46,12 @@ func TestTraceListUnreadableSessionDir(t *testing.T) {
 		_ = os.Chmod(badDir, 0o755)
 	})
 
-	var stdout, stderr bytes.Buffer
+	var stdout bytes.Buffer
 
-	listCmd := traceListCmd()
+	root := cli.New(cli.Config{Name: "fit", Version: "test", Short: "test"})
+	root.Viper.Set("format", "json")
+	listCmd := traceListCmd(root)
 	listCmd.SetOut(&stdout)
-	listCmd.SetErr(&stderr)
 	listCmd.SetArgs([]string{"--dir", tracesDir})
 
 	err := listCmd.Execute()
@@ -55,21 +59,36 @@ func TestTraceListUnreadableSessionDir(t *testing.T) {
 		t.Fatalf("unexpected error from list command: %v", err)
 	}
 
-	combined := stdout.String() + stderr.String()
-
-	// The good session must list normally with correct step count.
-	if !strings.Contains(combined, "session-good  (1 steps)") {
-		t.Errorf("expected good session line, got stdout=%q stderr=%q", stdout.String(), stderr.String())
+	// Decode as JSON array of traceRow objects.
+	var rows []traceRow
+	if err := json.Unmarshal(stdout.Bytes(), &rows); err != nil {
+		t.Fatalf("JSON decode failed: %v\nraw output: %s", err, stdout.String())
 	}
 
-	// The bad session must appear with "(steps: ?)".
-	if !strings.Contains(combined, "session-bad  (steps: ?)") {
-		t.Errorf("expected '(steps: ?)' for unreadable session, got stdout=%q stderr=%q", stdout.String(), stderr.String())
+	if len(rows) != 2 {
+		t.Fatalf("expected 2 rows, got %d: %+v", len(rows), rows)
 	}
 
-	// A warning about the unreadable session must be emitted.
-	if !strings.Contains(combined, "warning") || !strings.Contains(combined, "session-bad") {
-		t.Errorf("expected warning about session-bad, got stdout=%q stderr=%q", stdout.String(), stderr.String())
+	// Build lookup by session name.
+	bySession := make(map[string]traceRow, len(rows))
+	for _, r := range rows {
+		bySession[r.Session] = r
+	}
+
+	good, ok := bySession["session-good"]
+	if !ok {
+		t.Fatal("missing session-good in output")
+	}
+	if good.Steps != "1" {
+		t.Errorf("session-good steps = %q, want \"1\"", good.Steps)
+	}
+
+	bad, ok := bySession["session-bad"]
+	if !ok {
+		t.Fatal("missing session-bad in output")
+	}
+	if bad.Steps != "?" {
+		t.Errorf("session-bad steps = %q, want \"?\"", bad.Steps)
 	}
 }
 

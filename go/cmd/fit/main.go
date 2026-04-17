@@ -13,6 +13,7 @@ import (
 	"os"
 
 	"hop.top/kit/cli"
+	"hop.top/kit/log"
 )
 
 func main() {
@@ -22,9 +23,15 @@ func main() {
 		Short:   "Train small advisor models to steer black-box LLMs",
 	})
 
-	root.Cmd.AddCommand(serveCmd())
-	root.Cmd.AddCommand(evalCmd())
-	root.Cmd.AddCommand(traceCmd())
+	// Load layered config; errors are non-fatal (defaults apply).
+	if err := LoadConfig(); err != nil {
+		logger := log.New(root.Viper)
+		logger.Warn("config load failed, using defaults", "err", err)
+	}
+
+	root.Cmd.AddCommand(serveCmd(root))
+	root.Cmd.AddCommand(evalCmd(root))
+	root.Cmd.AddCommand(traceCmd(root))
 
 	if err := root.Execute(context.Background()); err != nil {
 		os.Exit(1)
