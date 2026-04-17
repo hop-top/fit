@@ -286,13 +286,6 @@ class TestPR50UserSignalRewardInlineCommentRegression:
     not implemented.
     """
 
-    @pytest.mark.xfail(
-        strict=True,
-        reason=(
-            "PR #50 review: inline comment mentions context key "
-            "but impl only uses output hash"
-        ),
-    )
     def test_call_source_does_not_mention_context_key(self) -> None:
         """UserSignalReward.__call__ source must not mention 'context key'."""
         import inspect

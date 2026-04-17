@@ -117,7 +117,7 @@ class UserSignalReward(RewardFn):
         self._default = default
 
     def __call__(self, context: str, advice: str, output: str) -> float:
-        # Try to find a matching score by output text hash or context key
+        # Look up score by SHA-256 hash of output text
         import hashlib
 
         key = hashlib.sha256(output.encode()).hexdigest()[:16]
