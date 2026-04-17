@@ -1,23 +1,24 @@
 # fit
 
-Train small advisor models to steer black-box LLMs without fine-tuning.
-
-Based on: *How to Train Your Advisor — Steering Black-Box LLMs with
-ADVISOR MODELS*.
+Train small advisor models to steer black-box LLMs without
+fine-tuning.
 
 ## What
 
-fit provides a polyglot serving layer that:
+fit provides two things:
 
-1. Loads a trained advisor model (from fit-coach pipeline)
-2. Generates per-instance steering advice for each request
-3. Injects advice into frontier LLM calls as hidden context
-4. Scores outputs via pluggable reward functions
-5. Records traces for continuous advisor improvement
+1. **Polyglot serving layer** — loads a trained advisor, injects
+   per-request steering advice into frontier LLM calls, scores
+   outputs, and records traces.
+2. **Training pipeline** (`fit.training`) — ingests traces, builds
+   datasets, runs GRPO optimization, and exports deployable
+   artifacts.
 
 The frontier model is **never modified**.
 
 ## Quick start
+
+### Inference
 
 ```python
 from fit.session import Session
@@ -27,10 +28,36 @@ from fit.adapters import AnthropicAdapter
 
 advisor = RemoteAdvisor.from_endpoint("http://localhost:8080")
 adapter = AnthropicAdapter()
-scorer = CompositeScorer.composite(["accuracy", "relevance", "safety"])
-session = Session(advisor=advisor, adapter=adapter, scorer=scorer)
+scorer = CompositeScorer.composite(
+    ["accuracy", "relevance", "safety"]
+)
+session = Session(
+    advisor=advisor, adapter=adapter, scorer=scorer
+)
 
-output, reward, trace = session.run("What is the standard deduction?")
+output, reward, trace = session.run(
+    "What is the standard deduction?"
+)
+```
+
+### Training
+
+```bash
+# Dry-run (no torch required)
+python -m examples.train_advisor \
+  --traces spec/fixtures --dry-run
+
+# Full training
+python -m examples.train_advisor \
+  --traces ./traces --base-model Qwen/Qwen2-0.5B \
+  --epochs 3 --output ./advisor-output
+```
+
+### Serving a trained advisor
+
+```bash
+python -m examples.serve_advisor \
+  --model-path ./advisor-output --port 8080
 ```
 
 ## Architecture
@@ -42,7 +69,19 @@ Input → Advisor → [hidden advice] → Frontier LLM → Output
                                                ↓
                                            Trace Store
                                                ↓
-                                      Advisor Training (fit-coach)
+                                      Training Pipeline
+                                               ↓
+                                        Trained Advisor
+```
+
+### Training pipeline
+
+```
+Traces (JSONL/YAML/SQLite)
+  → TraceIngester        (ingest + filter)
+  → DatasetBuilder       (normalize + split)
+  → GRPOTrainer          (TRL or simplified fallback)
+  → ModelExporter         (safetensors/GGUF/ONNX)
 ```
 
 ## Monorepo map
@@ -57,6 +96,18 @@ Input → Advisor → [hidden advice] → Frontier LLM → Output
 | `spec/` | — | Language-agnostic specs |
 | `vs/` | — | Migration guides |
 | `docs/` | — | Paper summaries, architecture |
+
+### Python extras
+
+```bash
+pip install fit                  # core (inference)
+pip install fit[adapters]        # + Anthropic/OpenAI
+pip install fit[dev]             # + pytest, ruff, mypy
+# Training deps (optional):
+pip install torch transformers   # simplified GRPO
+pip install trl                  # TRL-backed GRPO
+pip install safetensors          # safetensors export
+```
 
 ## Building
 
@@ -79,3 +130,21 @@ All ports implement against shared specs in `spec/`:
 ## License
 
 MIT — see [LICENSE](LICENSE).
+
+## Citation
+
+```bibtex
+@misc{asawa2025trainadvisor,
+  title={How to Train Your Advisor: Steering Black-Box
+         LLMs with Advisor Models},
+  author={Asawa, Parth and Zhu, Alan and Zaharia, Matei
+          and Dimakis, Alexandros G.
+          and Gonzalez, Joseph E.},
+  year={2025},
+  eprint={2510.02453},
+  archivePrefix={arXiv},
+  primaryClass={cs.LG},
+  doi={10.48550/arXiv.2510.02453},
+  url={https://arxiv.org/abs/2510.02453}
+}
+```

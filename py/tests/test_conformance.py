@@ -137,6 +137,35 @@ class TestTraceConformance:
         score2 = data2["reward"]["score"]
         assert score1 == score2
 
+    def test_fixture_frontier_schema_conformance(self) -> None:
+        """trace-v1.json frontier section must match trace-format-v1 schema."""
+        data = _load_json("trace-v1.json")
+        frontier = data["frontier"]
+        for key in ("model", "provider", "output", "usage"):
+            assert key in frontier, f"frontier missing required key: {key}"
+        assert isinstance(frontier["model"], str)
+        assert isinstance(frontier["provider"], str)
+        assert isinstance(frontier["output"], str)
+        usage = frontier["usage"]
+        required_usage_keys = {"prompt_tokens", "completion_tokens", "total_tokens"}
+        assert set(usage.keys()) == required_usage_keys
+        for field_name in required_usage_keys:
+            assert isinstance(usage[field_name], int), (
+                f"usage.{field_name} must be int"
+            )
+
+    def test_fixture_frontier_provider_valid(self) -> None:
+        """Provider in trace fixture must be a known value."""
+        data = _load_json("trace-v1.json")
+        assert data["frontier"]["provider"] in {"anthropic", "openai", "ollama"}
+
+    def test_fixture_frontier_usage_tokens_non_negative(self) -> None:
+        """Token counts must be non-negative integers."""
+        data = _load_json("trace-v1.json")
+        usage = data["frontier"]["usage"]
+        for key in ("prompt_tokens", "completion_tokens", "total_tokens"):
+            assert usage[key] >= 0
+
 
 class TestSessionMultiConformance:
     def test_multi_turn_parse(self) -> None:
