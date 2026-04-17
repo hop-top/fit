@@ -205,7 +205,7 @@ class TraceIngester:
                         if not isinstance(item, dict):
                             raise ValueError(
                                 f"Expected each item in JSON array {p} to be "
-                                f"an object, but item at index {idx} is "
+                                f"a dict (JSON object), but item at index {idx} is "
                                 f"{type(item).__name__}"
                             )
                         self._records.append(_parse_raw(item))

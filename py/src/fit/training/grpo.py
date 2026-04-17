@@ -181,12 +181,13 @@ class GRPOTrainer:
         )
 
     def _train_simplified(self, dataset: FitDataset) -> TrainingResult:
-        """Simplified GRPO loop using raw torch.
+        """Simplified fallback training loop using raw torch.
 
-        Runs policy gradient updates with:
-        - Reward shaping (linear/exponential/clipped)
-        - KL penalty via beta
-        - PPO-style clip range
+        Runs basic policy-gradient-style updates with reward shaping
+        (linear/exponential/min-max cap).
+
+        Note: this simplified path does not implement the KL penalty or
+        probability-ratio range limits used by fuller GRPO/PPO setups.
         """
         import random
 
@@ -201,6 +202,12 @@ class GRPOTrainer:
             ) from exc
 
         cfg = self._config
+
+        if self._reward_fn is not None:
+            logger.warning(
+                "reward_fn is not supported in simplified training mode; "
+                "custom reward function will be ignored"
+            )
         rng = random.Random(cfg.seed)
         torch.manual_seed(cfg.seed)
 
@@ -302,9 +309,7 @@ class GRPOTrainer:
                 "trainer": "simplified",
                 "base_model": cfg.base_model,
                 "completed_at": datetime.now(timezone.utc).isoformat(),
-                "epoch_losses": epoch_losses[-cfg.epochs :]
-                if len(epoch_losses) >= cfg.epochs
-                else epoch_losses,
+                "batch_losses": epoch_losses,
             },
         )
 

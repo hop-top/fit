@@ -580,7 +580,6 @@ class TestPR34LoadBatchErrorMessageWordingRegression:
     message is corrected to include "dict" or "JSON object".
     """
 
-    @pytest.mark.xfail(strict=True)
     def test_error_message_contains_dict_or_json_object(
         self, tmp_path: Path
     ) -> None:

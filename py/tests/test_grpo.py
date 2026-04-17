@@ -314,7 +314,6 @@ class TestPR34TrainSimplifiedDocstringAccuracyRegression:
     docstring is corrected to match reality.
     """
 
-    @pytest.mark.xfail(strict=True)
     def test_docstring_does_not_mention_unimplemented_features(self) -> None:
         """Docstring must not claim beta/clip_range if body doesn't use them."""
         import inspect
@@ -365,48 +364,24 @@ class TestPR34RewardFnIgnoredInSimplifiedRegression:
     is added to _train_simplified.
     """
 
-    @pytest.mark.xfail(strict=True)
     def test_warning_logged_when_reward_fn_ignored(self) -> None:
         """Simplified mode must log a warning when reward_fn is provided."""
-        import logging
-        from unittest.mock import MagicMock, patch
+        import inspect
+        from unittest.mock import MagicMock
 
-        # Create a mock reward function
-        mock_reward_fn = MagicMock(return_value=0.5)
+        # Read source before any patching to avoid MagicMock interference
+        from fit.training.grpo import GRPOTrainer
 
-        cfg = GRPOConfig(epochs=1, batch_size=2, use_trl=False)
-        trainer = GRPOTrainer(cfg, reward_fn=mock_reward_fn)
+        source = inspect.getsource(GRPOTrainer._train_simplified)
+        source_lower = source.lower()
 
-        dataset = _make_dataset(4)
-
-        with (
-            patch.dict(
-                "sys.modules",
-                {
-                    "torch": MagicMock(),
-                    "transformers": MagicMock(),
-                    "transformers.AutoModelForCausalLM": MagicMock(),
-                    "transformers.AutoTokenizer": MagicMock(),
-                },
-            ),
-            patch.object(
-                GRPOTrainer, "_train_simplified", wraps=trainer._train_simplified
-            ) as _spy,
-        ):
-            # We can't easily run _train_simplified without real torch.
-            # Instead, read the source and check for the warning pattern.
-            import inspect
-
-            source = inspect.getsource(GRPOTrainer._train_simplified)
-            source_lower = source.lower()
-
-            assert (
-                "reward_fn" in source_lower
-                and "warn" in source_lower
-            ), (
-                "_train_simplified must log a warning when self._reward_fn "
-                "is provided but simplified mode is used"
-            )
+        assert (
+            "reward_fn" in source_lower
+            and "warn" in source_lower
+        ), (
+            "_train_simplified must log a warning when self._reward_fn "
+            "is provided but simplified mode is used"
+        )
 
 
 class TestPR34EpochLossesMisleadingRegression:
@@ -422,7 +397,6 @@ class TestPR34EpochLossesMisleadingRegression:
     renamed to "batch_losses" and contains ALL batch losses.
     """
 
-    @pytest.mark.xfail(strict=True)
     def test_losses_key_named_batch_losses_and_complete(self) -> None:
         """training_metadata must use 'batch_losses' (not 'epoch_losses')
         and contain ALL per-batch loss values."""
