@@ -30,14 +30,6 @@ class TestLoadBatchSingleYamlMissingYAMLErrorCatch:
     Actual:   raw ``yaml.YAMLError``.
     """
 
-    @pytest.mark.xfail(
-        strict=True,
-        reason=(
-            "load_batch single-file YAML branch calls yaml.safe_load "
-            "without catching yaml.YAMLError — inconsistent with "
-            "load_yaml_dir"
-        ),
-    )
     def test_malformed_single_yaml_raises_value_error_with_path(
         self, tmp_path: Path
     ) -> None:
@@ -101,10 +93,6 @@ class TestUnusedTempfileImport:
 
         return True
 
-    @pytest.mark.xfail(
-        strict=True,
-        reason="tempfile is imported but never used in the target file",
-    )
     @pytest.mark.parametrize(
         "rel_path",
         [

@@ -210,8 +210,13 @@ class TraceIngester:
                 if p.is_dir():
                     self.load_yaml_dir(p)
                 else:
-                    with p.open("r", encoding="utf-8") as f:
-                        raw = yaml.safe_load(f)
+                    try:
+                        with p.open("r", encoding="utf-8") as f:
+                            raw = yaml.safe_load(f)
+                    except yaml.YAMLError as exc:
+                        raise ValueError(
+                            f"Invalid YAML in {p}: {exc}"
+                        ) from exc
                     if isinstance(raw, dict):
                         if "input" in raw or "frontier" in raw:
                             self._records.append(_parse_raw(raw))
