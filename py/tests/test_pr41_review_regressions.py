@@ -6,9 +6,8 @@ from __future__ import annotations
 
 import sys
 import types
+from pathlib import Path
 from unittest.mock import patch
-
-import pytest
 
 
 # ---------------------------------------------------------------------------
@@ -26,7 +25,7 @@ class TestToGgufReturnsPhantomPath:
     """
 
     def test_returned_path_exists_or_raises(
-        self, tmp_path: pytest.TempPathFactory
+        self, tmp_path: Path
     ) -> None:
         """If ``to_gguf`` returns a path, that path must exist as a
         file. Otherwise the method must raise ``NotImplementedError``

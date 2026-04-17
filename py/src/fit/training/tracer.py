@@ -218,6 +218,12 @@ class TraceIngester:
                 elif isinstance(raw, dict):
                     if "input" in raw or "frontier" in raw:
                         self._records.append(_parse_raw(raw))
+                else:
+                    raise ValueError(
+                        f"Unexpected top-level JSON type in {p}: "
+                        f"expected object or array, got "
+                        f"{type(raw).__name__}"
+                    )
         return self
 
     # -- filtering --

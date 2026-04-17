@@ -25,13 +25,6 @@ class TestJsonBareValueSilentlyIgnored:
     ``ValueError`` as ``load_jsonl()`` does for non-dict records.
     """
 
-    @pytest.mark.xfail(
-        strict=True,
-        reason=(
-            "JSON branch silently ignores bare string; "
-            "should raise ValueError"
-        ),
-    )
     def test_bare_string_raises(self, tmp_path: Path) -> None:
         """A JSON file containing a bare string (``"hello"``) must
         raise ``ValueError`` — not silently succeed with 0 records."""
@@ -43,13 +36,6 @@ class TestJsonBareValueSilentlyIgnored:
         with pytest.raises(ValueError):
             TraceIngester().load_batch([p])
 
-    @pytest.mark.xfail(
-        strict=True,
-        reason=(
-            "JSON branch silently ignores bare number; "
-            "should raise ValueError"
-        ),
-    )
     def test_bare_number_raises(self, tmp_path: Path) -> None:
         """A JSON file containing a bare number (``42``) must raise
         ``ValueError`` — not silently succeed with 0 records."""
@@ -77,13 +63,6 @@ class TestTmpPathAnnotationRegression:
     incorrect.
     """
 
-    @pytest.mark.xfail(
-        strict=True,
-        reason=(
-            "tmp_path annotation is pytest.TempPathFactory "
-            "instead of pathlib.Path"
-        ),
-    )
     def test_tmp_path_annotation_is_path(self) -> None:
         """The ``tmp_path`` parameter of
         ``TestToGgufReturnsPhantomPath.test_returned_path_exists_or_raises``
@@ -98,7 +77,9 @@ class TestTmpPathAnnotationRegression:
             .test_returned_path_exists_or_raises
         )
         ann = sig.parameters["tmp_path"].annotation
-        assert ann is Path, (
+        # With `from __future__ import annotations`, annotations
+        # are strings. Accept both the type and the string form.
+        assert ann is Path or ann == "Path", (
             "Bug confirmed: tmp_path annotation is "
             f"{ann!r} instead of pathlib.Path"
         )
