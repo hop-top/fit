@@ -58,11 +58,13 @@ class TestModelExporter:
         model_dir.mkdir()
         exporter = ModelExporter(str(model_dir))
 
-        # Should either succeed (if gguf installed + no model) or raise ImportError
+        # Should either succeed, raise ImportError when gguf is unavailable,
+        # or raise NotImplementedError when gguf is installed but conversion
+        # is intentionally unimplemented.
         try:
             exporter.to_gguf(str(tmp_path / "out.gguf"))
-        except ImportError:
-            pass  # expected when gguf not installed
+        except (ImportError, NotImplementedError):
+            pass  # expected in environments without gguf or with stubbed support
 
     def test_push_to_hub(self, tmp_path: Path) -> None:
         from unittest.mock import MagicMock, patch

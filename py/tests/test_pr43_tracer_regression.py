@@ -30,13 +30,6 @@ class TestLoadSqliteMissingJSONDecodeErrorWrapping:
     Actual:   raw ``json.JSONDecodeError``.
     """
 
-    @pytest.mark.xfail(
-        strict=True,
-        reason=(
-            "PR #43 review: load_sqlite json.loads without "
-            "JSONDecodeError wrapping"
-        ),
-    )
     def test_invalid_json_raises_value_error_with_context(
         self, tmp_path: Path
     ) -> None:

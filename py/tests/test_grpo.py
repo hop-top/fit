@@ -310,8 +310,8 @@ class TestPR34TrainSimplifiedDocstringAccuracyRegression:
     The docstring is misleading. Fix must either implement those
     features or remove the claims.
 
-    This test is marked xfail(strict=True): it PASSES once the
-    docstring is corrected to match reality.
+    This test runs normally and should pass once the docstring is
+    corrected to match reality.
     """
 
     def test_docstring_does_not_mention_unimplemented_features(self) -> None:
@@ -360,8 +360,7 @@ class TestPR34RewardFnIgnoredInSimplifiedRegression:
     from TrainingExample.reward. A warning should be logged so the user
     knows their custom reward function is being ignored.
 
-    This test is marked xfail(strict=True): it PASSES once the warning
-    is added to _train_simplified.
+    This test passes once the warning is added to _train_simplified.
     """
 
     def test_warning_logged_when_reward_fn_ignored(self) -> None:
@@ -393,8 +392,8 @@ class TestPR34EpochLossesMisleadingRegression:
     The name implies per-epoch but contains per-batch, and the slice
     discards data when batches > epochs.
 
-    This test is marked xfail(strict=True): it PASSES once the key is
-    renamed to "batch_losses" and contains ALL batch losses.
+    This test verifies the key is renamed to "batch_losses" and that it
+    contains ALL batch losses.
     """
 
     def test_losses_key_named_batch_losses_and_complete(self) -> None:

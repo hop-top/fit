@@ -144,7 +144,13 @@ class TraceIngester:
             try:
                 cursor = conn.execute(f"SELECT data FROM {table}")
                 for row_index, row in enumerate(cursor, start=1):
-                    raw = json.loads(row["data"])
+                    try:
+                        raw = json.loads(row["data"])
+                    except json.JSONDecodeError as exc:
+                        raise ValueError(
+                            f"Invalid JSON in SQLite table {table!r} at "
+                            f"row {row_index} from {path}: {exc}"
+                        ) from exc
                     if not isinstance(raw, dict):
                         raise ValueError(
                             f"Invalid JSON object in SQLite table {table!r} at row "

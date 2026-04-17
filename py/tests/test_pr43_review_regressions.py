@@ -16,13 +16,6 @@ import pytest
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "PR #43 review: docstring says 'marked xfail(strict=True)' "
-        "but no pytest.mark.xfail decorator is present"
-    ),
-)
 class TestDocstringClaimsXfailButNoMarkerTrainSimplified:
     """``TestPR34TrainSimplifiedDocstringAccuracyRegression`` docstring
     (test_grpo.py:313-314) states "This test is marked
@@ -61,13 +54,6 @@ class TestDocstringClaimsXfailButNoMarkerTrainSimplified:
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "PR #43 review: docstring says 'marked xfail(strict=True)' "
-        "but no pytest.mark.xfail decorator is present"
-    ),
-)
 class TestDocstringClaimsXfailButNoMarkerRewardFn:
     """``TestPR34RewardFnIgnoredInSimplifiedRegression`` docstring
     (test_grpo.py:363-364) states "This test is marked
@@ -106,13 +92,6 @@ class TestDocstringClaimsXfailButNoMarkerRewardFn:
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "PR #43 review: docstring says 'marked xfail(strict=True)' "
-        "but no pytest.mark.xfail decorator is present"
-    ),
-)
 class TestDocstringClaimsXfailButNoMarkerEpochLosses:
     """``TestPR34EpochLossesMisleadingRegression`` docstring
     (test_grpo.py:396-397) states "This test is marked
@@ -151,13 +130,6 @@ class TestDocstringClaimsXfailButNoMarkerEpochLosses:
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "PR #43 review: except clause catches ImportError only but "
-        "to_gguf() also raises NotImplementedError"
-    ),
-)
 class TestToGgufExceptClauseMissesNotImplementedError:
     """``TestModelExporter.test_to_gguf_no_model`` (test_export.py:62-65)
     wraps ``exporter.to_gguf()`` in ``except ImportError: pass`` but
