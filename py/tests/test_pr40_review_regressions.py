@@ -23,10 +23,6 @@ class TestLLMJudgeAdviceLineLengthRegression:
     should be wrapped to comply with project style.
     """
 
-    @pytest.mark.xfail(
-        strict=True,
-        reason="Advice construction line exceeds 100 chars",
-    )
     def test_advice_line_within_limit(self) -> None:
         """Every source line in ``LLMJudgeReward.__call__`` must be
         at most 100 characters wide."""
@@ -63,10 +59,6 @@ class TestLLMJudgeValueErrorRegression:
     the call crashes instead of returning the 0.5 neutral fallback.
     """
 
-    @pytest.mark.xfail(
-        strict=True,
-        reason="except ImportError does not catch ValueError from missing API key",
-    )
     def test_returns_fallback_on_missing_api_key(self) -> None:
         """Calling ``LLMJudgeReward()`` when the adapter raises
         ``ValueError`` (missing API key) must return 0.5, not raise."""
@@ -101,15 +93,11 @@ class TestUnusedPytestImportRegression:
     """
 
     _FILES = (
-        "test_pr37_review_regressions",
-        "test_pr38_review_regressions",
-        "test_pr39_review_regressions",
+        "tests.test_pr37_review_regressions",
+        "tests.test_pr38_review_regressions",
+        "tests.test_pr39_review_regressions",
     )
 
-    @pytest.mark.xfail(
-        strict=True,
-        reason="pytest imported but never used in these files",
-    )
     @pytest.mark.parametrize("module_name", _FILES)
     def test_pytest_import_is_used(self, module_name: str) -> None:
         """If a module imports ``pytest``, at least one ``pytest.``

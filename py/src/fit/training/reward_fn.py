@@ -85,12 +85,17 @@ class LLMJudgeReward(RewardFn):
             from ..types import Advice
 
             adapter = AnthropicAdapter(model=self._model, **self._adapter_config)
-            judge_advice = Advice(domain="judge", steering_text="Score the output.", confidence=1.0)
+            judge_advice = Advice(
+                domain="judge",
+                steering_text="Score the output.",
+                confidence=1.0,
+            )
             result = adapter.call(prompt, judge_advice)
             score_text = result[0] if isinstance(result, tuple) else str(result)
             return _parse_score(score_text)
-        except ImportError:
+        except (ImportError, ValueError):
             # Fallback: return neutral score if adapter unavailable
+            # or API key missing
             return 0.5
 
 

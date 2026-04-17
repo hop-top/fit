@@ -6,8 +6,6 @@ from __future__ import annotations
 
 import inspect
 
-import pytest
-
 
 # ---------------------------------------------------------------------------
 # Bug 1 & 2: load_sqlite uses .fetchall() instead of cursor streaming

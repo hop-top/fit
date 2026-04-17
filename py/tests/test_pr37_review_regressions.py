@@ -6,8 +6,6 @@ from __future__ import annotations
 
 import inspect
 
-import pytest
-
 
 # ---------------------------------------------------------------------------
 # Bug 1: LLMJudgeReward test is environment-dependent

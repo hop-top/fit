@@ -6,8 +6,6 @@ from __future__ import annotations
 
 import inspect
 
-import pytest
-
 
 # ---------------------------------------------------------------------------
 # Bug 1: Redundant trainer.save() in train_advisor.py
