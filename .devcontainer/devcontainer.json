@@ -1,0 +1,32 @@
+{
+  "name": "fit",
+  "build": {
+    "dockerfile": "../Dockerfile.dev",
+    "context": ".."
+  },
+  "workspaceFolder": "/workspace",
+  "remoteUser": "dev",
+  "features": {
+    "ghcr.io/devcontainers/features/git:1": {},
+    "ghcr.io/devcontainers/features/github-cli:1": {},
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {}
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "golang.go",
+        "ms-python.python",
+        "rust-lang.rust-analyzer",
+        "bmewburn.vscode-intelephense-client",
+        "redhat.vscode-yaml",
+        "task.vscode-task"
+      ],
+      "settings": {
+        "go.gopath": "/home/dev/go",
+        "python.defaultInterpreterPath": "/usr/bin/python3.11"
+      }
+    }
+  },
+  "postCreateCommand": "task install",
+  "forwardPorts": [8080]
+}

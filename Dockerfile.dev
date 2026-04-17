@@ -1,0 +1,73 @@
+# syntax=docker/dockerfile:1
+
+FROM ubuntu:24.04
+
+LABEL org.opencontainers.image.title="fit-dev" \
+      org.opencontainers.image.description="Polyglot dev environment for fit contributors" \
+      org.opencontainers.image.source="https://github.com/hop-top/fit"
+
+ARG GO_VERSION=1.26.1
+ARG NODE_VERSION=22
+ARG PYTHON_VERSION=3.11
+ARG PHP_VERSION=8.3
+ARG TASK_VERSION=3.43.3
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Base tools
+RUN apt-get update && apt-get install -y --no-install-recommends \
+      ca-certificates curl git jq wget unzip build-essential \
+      software-properties-common pkg-config \
+    && rm -rf /var/lib/apt/lists/*
+
+# Go
+RUN curl -fsSL "https://go.dev/dl/go${GO_VERSION}.linux-$(dpkg --print-architecture).tar.gz" \
+      | tar -C /usr/local -xz
+ENV PATH="/usr/local/go/bin:/root/go/bin:${PATH}"
+
+# Node + pnpm
+RUN curl -fsSL https://deb.nodesource.com/setup_${NODE_VERSION}.x | bash - \
+    && apt-get install -y --no-install-recommends nodejs \
+    && npm install -g pnpm@9 \
+    && rm -rf /var/lib/apt/lists/*
+
+# Python
+RUN add-apt-repository ppa:deadsnakes/ppa \
+    && apt-get update \
+    && apt-get install -y --no-install-recommends \
+      python${PYTHON_VERSION} python${PYTHON_VERSION}-venv \
+      python3-pip \
+    && rm -rf /var/lib/apt/lists/*
+
+# Rust
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \
+      | sh -s -- -y --default-toolchain stable --component clippy
+ENV PATH="/root/.cargo/bin:${PATH}"
+
+# PHP + Composer
+RUN add-apt-repository ppa:ondrej/php \
+    && apt-get update \
+    && apt-get install -y --no-install-recommends \
+      php${PHP_VERSION}-cli php${PHP_VERSION}-xml php${PHP_VERSION}-mbstring \
+    && rm -rf /var/lib/apt/lists/* \
+    && curl -sS https://getcomposer.org/installer | php -- \
+      --install-dir=/usr/local/bin --filename=composer
+
+# go-task
+RUN curl -fsSL \
+      "https://github.com/go-task/task/releases/download/v${TASK_VERSION}/task_linux_$(dpkg --print-architecture).deb" \
+      -o /tmp/task.deb \
+    && dpkg -i /tmp/task.deb && rm /tmp/task.deb
+
+# yq
+RUN curl -fsSL \
+      "https://github.com/mikefarah/yq/releases/latest/download/yq_linux_$(dpkg --print-architecture)" \
+      -o /usr/local/bin/yq && chmod +x /usr/local/bin/yq
+
+# Non-root user
+RUN useradd -m -s /bin/bash -u 1000 dev
+USER dev
+
+WORKDIR /workspace
+
+CMD ["bash"]

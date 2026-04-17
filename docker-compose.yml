@@ -1,0 +1,49 @@
+services:
+  fit:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./:/workspace:cached
+    command: ["serve", "--config", "/workspace/config.yaml"]
+    networks:
+      - fit-net
+
+  fit-coach:
+    build:
+      context: .
+      dockerfile: Dockerfile.coach
+    volumes:
+      - ./:/workspace:cached
+    depends_on:
+      - fit
+    networks:
+      - fit-net
+
+  dev:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    volumes:
+      - ./:/workspace:cached
+      - go-mod:/home/dev/go/pkg/mod
+      - pnpm-store:/home/dev/.local/share/pnpm/store
+      - pip-cache:/home/dev/.cache/pip
+      - cargo-registry:/home/dev/.cargo/registry
+      - composer-cache:/home/dev/.cache/composer
+    command: ["sleep", "infinity"]
+    networks:
+      - fit-net
+
+networks:
+  fit-net:
+    driver: bridge
+
+volumes:
+  go-mod:
+  pnpm-store:
+  pip-cache:
+  cargo-registry:
+  composer-cache:
