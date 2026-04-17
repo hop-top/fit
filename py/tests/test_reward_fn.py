@@ -256,10 +256,6 @@ class TestPR49UserSignalRewardDocstringRegression:
     match the code.
     """
 
-    @pytest.mark.xfail(
-        strict=True,
-        reason="PR #49 review: docstring mentions session_id but impl uses output hashing",
-    )
     def test_docstring_does_not_mention_session_id(self) -> None:
         """UserSignalReward.__doc__ must not reference 'session_id'."""
         doc = UserSignalReward.__doc__ or ""
@@ -267,10 +263,6 @@ class TestPR49UserSignalRewardDocstringRegression:
             "Docstring still mentions 'session_id'; impl uses output text hashing"
         )
 
-    @pytest.mark.xfail(
-        strict=True,
-        reason="PR #49 review: docstring mentions (session_id, step) but impl uses output hashing",
-    )
     def test_docstring_does_not_mention_session_step_tuple(self) -> None:
         """UserSignalReward.__doc__ must not reference '(session_id, step)'."""
         doc = UserSignalReward.__doc__ or ""

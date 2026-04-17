@@ -215,10 +215,6 @@ class TestServeAdvisorJsonArrayConfigRegression:
     ``ValueError``.
     """
 
-    @pytest.mark.xfail(
-        strict=True,
-        reason="PR #49 review: JSON array config crashes with AttributeError on .get()",
-    )
     def test_json_array_config_does_not_crash(self, tmp_path: Path) -> None:
         """advisor.json with ``[1,2,3]`` must not raise AttributeError."""
         import json

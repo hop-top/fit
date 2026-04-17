@@ -100,10 +100,12 @@ class LLMJudgeReward(RewardFn):
 
 
 class UserSignalReward(RewardFn):
-    """Reward from pre-computed trace reward scores.
+    """Reward from pre-computed scores keyed by output text hash.
 
-    Looks up reward from a dictionary of (session_id, step) -> score
-    or falls back to the score embedded in context metadata.
+    On each call, computes a stable SHA-256 hash of ``output``,
+    truncates it to 16 hex characters, and looks up the corresponding
+    score in ``scores``. Returns ``default`` when no matching hash
+    key is present.
     """
 
     def __init__(

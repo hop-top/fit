@@ -238,10 +238,6 @@ class TestPR49SplitValRatioOneRegression:
     bound).  Currently the value is silently accepted and clamped.
     """
 
-    @pytest.mark.xfail(
-        strict=True,
-        reason="PR #49 review: val_ratio=1.0 silently clamped instead of rejected",
-    )
     def test_val_ratio_one_raises_value_error(self) -> None:
         """split(val_ratio=1.0) must raise ValueError."""
         examples = [

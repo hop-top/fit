@@ -30,10 +30,13 @@ class FitDataset:
         val_ratio: float = 0.1,
         seed: int = 42,
     ) -> tuple[FitDataset, FitDataset]:
-        """Split into (train, val) datasets. Deterministic with seed."""
-        if not 0.0 <= val_ratio <= 1.0:
+        """Split into (train, val) datasets while keeping train non-empty.
+
+        Deterministic with seed.
+        """
+        if not 0.0 <= val_ratio < 1.0:
             raise ValueError(
-                f"val_ratio must be between 0.0 and 1.0, got {val_ratio}"
+                f"val_ratio must be >= 0.0 and < 1.0, got {val_ratio}"
             )
         rng = random.Random(seed)
         indices = list(range(len(self._examples)))
