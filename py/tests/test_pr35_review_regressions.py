@@ -117,12 +117,13 @@ class TestGrpoDoubleBlankLineRegression:
 
 
 class TestPR34DocstringClaimsXfailRegression:
-    """``TestPR34LoadBatchErrorMessageWordingRegression`` docstring says
-    "This test is marked xfail(strict=True)" but the class has no
-    ``@pytest.mark.xfail`` decorator, so the test runs normally
-    instead of being expected to fail.
+    """Guard against reintroducing ``xfail`` wording into
+    ``TestPR34LoadBatchErrorMessageWordingRegression`` unless the
+    class also has a matching ``@pytest.mark.xfail`` decorator.
 
-    Fix: update the docstring to not claim xfail.
+    The regression check below intentionally verifies the general
+    contract: either an xfail marker exists, or the docstring does
+    not claim xfail.
     """
 
     def test_docstring_does_not_claim_xfail(self) -> None:

@@ -22,10 +22,6 @@ class TestRedundantTrainerSaveRegression:
     causing duplicate disk I/O.
     """
 
-    @pytest.mark.xfail(
-        strict=True,
-        reason="PR #38 review: redundant trainer.save() after train() which already saves",
-    )
     def test_no_redundant_save_after_train(self) -> None:
         """The ``main`` function must not call ``trainer.save()`` after
         ``trainer.train()`` since the latter already persists the model."""
@@ -54,10 +50,6 @@ class TestPR35DocstringStaleXfailClaimRegression:
     sync).
     """
 
-    @pytest.mark.xfail(
-        strict=True,
-        reason="PR #38 review: test_pr35 docstring references stale xfail claim",
-    )
     def test_docstring_does_not_reference_stale_xfail(self) -> None:
         """The class docstring of ``TestPR34DocstringClaimsXfailRegression``
         must describe the guard contract, not reference the already-fixed
@@ -86,10 +78,6 @@ class TestTracerDocstringStepPatternRegression:
     The docstring is misleading.
     """
 
-    @pytest.mark.xfail(
-        strict=True,
-        reason="PR #38 review: test docstring still references step-NNN but loader is content-based",
-    )
     def test_docstring_does_not_reference_step_pattern(self) -> None:
         """The docstring of ``test_non_step_pattern_file_loaded`` must not
         reference ``step-NNN`` since the loader uses content-based detection,

@@ -177,7 +177,6 @@ def main() -> None:
                 exc,
             )
             sys.exit(1)
-        trainer.save(str(output_path))
 
     # -- Step 4: Export --
     logger.info("Step 4: Generating model card")

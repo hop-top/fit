@@ -337,11 +337,10 @@ class TestPR30YamlDirDocstringRegression:
     """
 
     def test_non_step_pattern_file_loaded(self, tmp_path: Path) -> None:
-        """Files NOT matching step-NNN pattern ARE loaded (proves mismatch).
+        """Any YAML file with valid trace content (input/frontier) is loaded.
 
-        A file named 'other.yaml' with valid trace content gets ingested
-        even though the docstring says only step-NNN files should be.
-        When the fix enforces the pattern, flip this to assert count == 0.
+        Filenames are irrelevant — the loader uses content-based detection.
+        A file named 'other.yaml' with trace keys is correctly ingested.
         """
         session_dir = tmp_path / "sess_docstring"
         session_dir.mkdir()
@@ -350,10 +349,8 @@ class TestPR30YamlDirDocstringRegression:
             encoding="utf-8",
         )
         ingester = TraceIngester().load_yaml_dir(tmp_path)
-        # Current behavior: non-step file IS loaded (docstring mismatch)
         assert ingester.count() == 1, (
-            "Expected 1 — current code loads non-step-named yaml files. "
-            "If this fails, the loader was tightened to match the docstring."
+            "Expected 1 — any YAML with input/frontier keys is a trace."
         )
 
     def test_step_pattern_file_loaded(self, tmp_path: Path) -> None:
