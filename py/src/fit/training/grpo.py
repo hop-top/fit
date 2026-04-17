@@ -92,12 +92,12 @@ class GRPOTrainer:
             try:
                 self._model.save_pretrained(str(out))
             except Exception:
-                pass
+                logger.error("Failed to save model to %s", out, exc_info=True)
         if self._tokenizer is not None:
             try:
                 self._tokenizer.save_pretrained(str(out))
             except Exception:
-                pass
+                logger.error("Failed to save tokenizer to %s", out, exc_info=True)
 
         # Always save config for downstream consumers
         config_path = out / "training_config.json"

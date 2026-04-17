@@ -161,8 +161,16 @@ def _build_app(advisor: Advisor) -> Any:
                         400, {"error": f"invalid json: {exc}"}
                     )
                 else:
-                    advice = self._advisor.generate_advice(ctx)
-                    hdr, code, body = _json_response(200, asdict(advice))
+                    if not isinstance(ctx, dict):
+                        hdr, code, body = _json_response(
+                            400,
+                            {"error": "request body must be a JSON object"},
+                        )
+                    else:
+                        advice = self._advisor.generate_advice(ctx)
+                        hdr, code, body = _json_response(
+                            200, asdict(advice)
+                        )
 
             self.send_response(code)
             for k, v in hdr.items():
