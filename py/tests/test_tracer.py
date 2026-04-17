@@ -214,3 +214,135 @@ class TestDetectFormatYml:
         (tmp_path / "step-001.yaml").touch()
         (tmp_path / "step-002.yml").touch()
         assert _detect_format(tmp_path) == "yaml"
+
+
+class TestTraceIngestConfig:
+    def test_trace_ingest_config_defaults(self) -> None:
+        from fit.training.tracer import TraceIngestConfig
+
+        cfg = TraceIngestConfig()
+        assert cfg.yaml_glob == "*.y*ml"
+        assert cfg.required_keys == ("input", "frontier")
+        assert cfg.sqlite_data_column == "data"
+        assert cfg.metadata_filters == {}
+        assert cfg.field_filters == {}
+
+    def test_trace_ingest_config_frozen(self) -> None:
+        import dataclasses
+
+        from fit.training.tracer import TraceIngestConfig
+
+        cfg = TraceIngestConfig()
+        with pytest.raises(dataclasses.FrozenInstanceError):
+            cfg.yaml_glob = "*.yaml"  # type: ignore[misc]
+
+    def test_trace_ingest_config_custom_yaml_glob(self, tmp_path: Path) -> None:
+        from fit.training.tracer import TraceIngestConfig
+
+        session_dir = tmp_path / "sess"
+        session_dir.mkdir()
+        (session_dir / "step-001.yaml").write_text(
+            yaml.safe_dump(SAMPLE_TRACE, default_flow_style=False),
+            encoding="utf-8",
+        )
+        (session_dir / "step-002.yml").write_text(
+            yaml.safe_dump({**SAMPLE_TRACE, "id": "test-yml"}),
+            encoding="utf-8",
+        )
+
+        cfg = TraceIngestConfig(yaml_glob="*.yaml")
+        ingester = TraceIngester(config=cfg).load_yaml_dir(tmp_path)
+        records = ingester.to_trace_records()
+        assert len(records) == 1
+        assert records[0].id == "test-001"
+
+    def test_trace_ingest_config_custom_required_keys(self, tmp_path: Path) -> None:
+        from fit.training.tracer import TraceIngestConfig
+
+        session_dir = tmp_path / "sess"
+        session_dir.mkdir()
+        # Has custom_key — should be ingested
+        (session_dir / "a.yaml").write_text(
+            yaml.safe_dump({"custom_key": "val", "id": "has-key"}),
+            encoding="utf-8",
+        )
+        # Missing custom_key — should be skipped
+        (session_dir / "b.yaml").write_text(
+            yaml.safe_dump({"input": "x", "id": "no-key"}),
+            encoding="utf-8",
+        )
+
+        cfg = TraceIngestConfig(required_keys=("custom_key",))
+        ingester = TraceIngester(config=cfg).load_yaml_dir(tmp_path)
+        records = ingester.to_trace_records()
+        assert len(records) == 1
+        assert records[0].id == "has-key"
+
+    def test_trace_ingest_config_metadata_filters(self, tmp_path: Path) -> None:
+        from fit.training.tracer import TraceIngestConfig
+
+        traces = [
+            {
+                **SAMPLE_TRACE,
+                "id": "cr",
+                "advice": {**SAMPLE_TRACE["advice"], "domain": "code-review"},
+            },
+            {
+                **SAMPLE_TRACE,
+                "id": "other",
+                "advice": {**SAMPLE_TRACE["advice"], "domain": "legal"},
+            },
+        ]
+        jsonl = tmp_path / "traces.jsonl"
+        jsonl.write_text(
+            "\n".join(json.dumps(t) for t in traces), encoding="utf-8"
+        )
+
+        cfg = TraceIngestConfig(metadata_filters={"domain": "code-review"})
+        ingester = TraceIngester(config=cfg).load_jsonl(jsonl).filter()
+        assert ingester.count() == 1
+        assert ingester.to_trace_records()[0].id == "cr"
+
+    def test_trace_ingest_config_filter_kwargs_override(
+        self, tmp_path: Path
+    ) -> None:
+        from fit.training.tracer import TraceIngestConfig
+
+        traces = [
+            {
+                **SAMPLE_TRACE,
+                "id": "cr",
+                "advice": {**SAMPLE_TRACE["advice"], "domain": "code-review"},
+            },
+            {
+                **SAMPLE_TRACE,
+                "id": "other",
+                "advice": {**SAMPLE_TRACE["advice"], "domain": "other"},
+            },
+        ]
+        jsonl = tmp_path / "traces.jsonl"
+        jsonl.write_text(
+            "\n".join(json.dumps(t) for t in traces), encoding="utf-8"
+        )
+
+        cfg = TraceIngestConfig(metadata_filters={"domain": "code-review"})
+        ingester = TraceIngester(config=cfg).load_jsonl(jsonl).filter(domain="other")
+        assert ingester.count() == 1
+        assert ingester.to_trace_records()[0].id == "other"
+
+    def test_trace_ingest_config_sqlite_data_column(self, tmp_path: Path) -> None:
+        from fit.training.tracer import TraceIngestConfig
+
+        db_path = tmp_path / "traces.db"
+        conn = sqlite3.connect(str(db_path))
+        conn.execute("CREATE TABLE traces (payload TEXT)")
+        conn.execute(
+            "INSERT INTO traces VALUES (?)", (json.dumps(SAMPLE_TRACE),)
+        )
+        conn.commit()
+        conn.close()
+
+        cfg = TraceIngestConfig(sqlite_data_column="payload")
+        ingester = TraceIngester(config=cfg).load_sqlite(db_path)
+        assert ingester.count() == 1
+        assert ingester.to_trace_records()[0].id == "test-001"
