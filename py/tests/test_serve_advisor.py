@@ -259,3 +259,56 @@ class TestPytestMatchPathRegexRegression:
             "metacharacter issues with filesystem paths on "
             "Windows."
         )
+
+
+# -------------------------------------------------------------------
+# Regression: FileAdvisor doesn't validate constraints/metadata types
+# -------------------------------------------------------------------
+
+
+class TestFileAdvisorFieldTypeCoercionRegression:
+    """FileAdvisor accepts raw config values for constraints and
+    metadata without type-checking. A string ``constraints`` gets
+    exploded by ``list()`` into individual characters; a non-dict
+    ``metadata`` crashes on ``.get()`` with AttributeError.
+    """
+
+    def test_string_constraints_not_exploded(
+        self, tmp_path: Path
+    ) -> None:
+        """String constraints must not be char-exploded."""
+        from examples.serve_advisor import FileAdvisor
+
+        model_dir = tmp_path / "advisor"
+        model_dir.mkdir()
+        (model_dir / "advisor.json").write_text(
+            json.dumps({"constraints": "no-speculation"}),
+            encoding="utf-8",
+        )
+
+        advisor = FileAdvisor(str(model_dir))
+        # Must be [] or ["no-speculation"], never char list
+        assert advisor._constraints != list("no-speculation"), (
+            "String constraints exploded into individual chars"
+        )
+        assert isinstance(advisor._constraints, list)
+
+    def test_non_dict_metadata_no_crash(
+        self, tmp_path: Path
+    ) -> None:
+        """Non-dict metadata must not crash on .get() access."""
+        from examples.serve_advisor import FileAdvisor
+
+        model_dir = tmp_path / "advisor"
+        model_dir.mkdir()
+        (model_dir / "advisor.json").write_text(
+            json.dumps({"metadata": [1, 2, 3]}),
+            encoding="utf-8",
+        )
+
+        try:
+            FileAdvisor(str(model_dir))
+        except AttributeError as exc:
+            pytest.fail(
+                f"Non-dict metadata crashes FileAdvisor: {exc}"
+            )

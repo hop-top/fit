@@ -393,3 +393,29 @@ class TestSqliteUriCrossPlatformRegression:
             "paths with backslashes/drive letters. Use "
             "path.resolve().as_uri() instead."
         )
+
+
+class TestLoadYamlDirListFileRegression:
+    """load_yaml_dir silently ignores YAML files containing a list.
+
+    A YAML file with a list of trace dicts is valid input for
+    load_batch (single-file path), but load_yaml_dir only ingests
+    when ``isinstance(raw, dict)`` — silently skipping list files.
+    """
+
+    def test_yaml_list_file_in_dir_ingested(
+        self, tmp_path: Path
+    ) -> None:
+        """YAML list of traces in a dir must be ingested."""
+        session_dir = tmp_path / "sess_list"
+        session_dir.mkdir()
+        traces = [
+            {**SAMPLE_TRACE, "id": "list-001"},
+            {**SAMPLE_TRACE, "id": "list-002"},
+        ]
+        (session_dir / "batch.yaml").write_text(
+            yaml.safe_dump(traces, default_flow_style=False),
+            encoding="utf-8",
+        )
+        ingester = TraceIngester().load_yaml_dir(tmp_path)
+        assert ingester.count() == 2
