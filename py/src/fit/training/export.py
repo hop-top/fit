@@ -93,13 +93,17 @@ class ModelExporter:
                 "or convert via llama.cpp's convert_hf_to_gguf.py"
             )
 
-        # Stub: actual conversion requires full model loading
-        # In practice, use llama.cpp's conversion tools
         logger.warning(
             "GGUF conversion via Python is limited. "
             "Prefer llama.cpp's convert_hf_to_gguf.py for production."
         )
-        return out
+        raise NotImplementedError(
+            "GGUF export is not implemented for Hugging Face model "
+            "directories. Use llama.cpp's convert_hf_to_gguf.py to "
+            "generate the file, or place an existing .gguf artifact "
+            "in the model directory so it can be copied to the "
+            "requested output path."
+        )
 
     def to_onnx(self, output_path: str) -> Path:
         """Export model to ONNX format."""

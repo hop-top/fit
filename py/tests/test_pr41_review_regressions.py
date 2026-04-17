@@ -25,13 +25,6 @@ class TestToGgufReturnsPhantomPath:
     method silently report success with no artifact.
     """
 
-    @pytest.mark.xfail(
-        strict=True,
-        reason=(
-            "PR #41 review: to_gguf returns path without "
-            "creating GGUF artifact"
-        ),
-    )
     def test_returned_path_exists_or_raises(
         self, tmp_path: pytest.TempPathFactory
     ) -> None:
@@ -47,6 +40,7 @@ class TestToGgufReturnsPhantomPath:
 
         # Inject a fake ``gguf`` module so the import succeeds
         fake_gguf = types.ModuleType("gguf")
+        fake_gguf.GGUFWriter = type("GGUFWriter", (), {})  # type: ignore[attr-defined]
         with patch.dict(sys.modules, {"gguf": fake_gguf}):
             result = None
             raised = False
