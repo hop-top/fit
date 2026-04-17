@@ -1,0 +1,6 @@
+# Sample fit configuration file.
+# Place at ~/.config/fit/config.yaml (user) or .fit.yaml (project).
+addr: ":9090"
+traces-dir: "./test-traces"
+timeout: 3000
+model: "test-advisor"
