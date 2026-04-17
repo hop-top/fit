@@ -42,11 +42,6 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
-      - name: Install Task
-        uses: arduino/setup-task@v2
-        with:
-          version: 3.x
-
       - name: Setup Go
         if: matrix.language == 'go'
         uses: actions/setup-go@v6
@@ -56,7 +51,7 @@ jobs:
 
       - name: Go lint + test
         if: matrix.language == 'go'
-        run: task install:go && task lint:go && task test:go
+        run: make install\:go && make lint\:go && make test\:go
 
       - name: Setup Node
         if: matrix.language == 'ts'
@@ -72,7 +67,7 @@ jobs:
 
       - name: TS lint + test
         if: matrix.language == 'ts'
-        run: task install:ts && task lint:ts && task test:ts
+        run: make install\:ts && make lint\:ts && make test\:ts
 
       - name: Setup Python
         if: matrix.language == 'py'
@@ -82,7 +77,7 @@ jobs:
 
       - name: Python lint + test
         if: matrix.language == 'py'
-        run: task install:py && task lint:py && task test:py
+        run: make install\:py && make lint\:py && make test\:py
 
       - name: Setup Rust
         if: matrix.language == 'rs'
@@ -98,7 +93,7 @@ jobs:
 
       - name: Rust lint + test
         if: matrix.language == 'rs'
-        run: task install:rs && task lint:rs && task test:rs
+        run: make install\:rs && make lint\:rs && make test\:rs
 
       - name: Setup PHP
         if: matrix.language == 'php'
@@ -109,7 +104,7 @@ jobs:
 
       - name: PHP lint + test
         if: matrix.language == 'php'
-        run: task install:php && task lint:php && task test:php
+        run: make install\:php && make lint\:php && make test\:php
 
   # ---- 2. Nightly Go snapshot ----
   snapshot:
