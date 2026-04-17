@@ -622,3 +622,48 @@ class TestOnnxOutputPathConsistencyRegression:
         assert not (requested.parent / "model.onnx").exists(), (
             "Original model.onnx must be renamed, not left behind"
         )
+
+
+# ---------------------------------------------------------------------------
+# Regression: to_safetensors imports safetensors before copy-only check
+# ---------------------------------------------------------------------------
+
+
+class TestSafetensorsCopyOnlyNoImportRegression:
+    """Regression: copy-only path should not require safetensors.
+
+    ``to_safetensors()`` imports ``safetensors.torch.save_file`` at
+    the top of the method, BEFORE checking whether the model already
+    has ``model.safetensors`` (the copy-only path). The copy-only
+    path just does ``shutil.copy2`` and never calls ``save_file``,
+    so environments without safetensors installed get an ImportError
+    even when no conversion is needed.
+    """
+
+    def test_copy_only_path_without_safetensors(
+        self, tmp_path: Path
+    ) -> None:
+        """When model.safetensors exists, safetensors need not be
+        importable — copy-only path uses shutil.copy2."""
+        model_dir = tmp_path / "model"
+        model_dir.mkdir()
+        (model_dir / "model.safetensors").write_bytes(
+            b"fake-safetensors-payload"
+        )
+
+        exporter = ModelExporter(str(model_dir))
+        out_dir = tmp_path / "out"
+
+        with patch.dict("sys.modules", {
+            "safetensors": None,
+            "safetensors.torch": None,
+        }):
+            result = exporter.to_safetensors(str(out_dir))
+
+        assert (result / "model.safetensors").exists(), (
+            "model.safetensors should be copied to output dir"
+        )
+        assert (
+            (result / "model.safetensors").read_bytes()
+            == b"fake-safetensors-payload"
+        ), "Copied file content must match source"
