@@ -576,8 +576,8 @@ class TestPR34LoadBatchErrorMessageWordingRegression:
     Either the error message should include "dict" (or "JSON object")
     or the existing test matcher is wrong.
 
-    This test is marked xfail(strict=True): it PASSES once the error
-    message is corrected to include "dict" or "JSON object".
+    This regression test passes once the error message is corrected to
+    include "dict" or "JSON object".
     """
 
     def test_error_message_contains_dict_or_json_object(

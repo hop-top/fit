@@ -143,8 +143,14 @@ class TraceIngester:
             # Try JSON blob column first
             try:
                 rows = conn.execute(f"SELECT data FROM {table}").fetchall()
-                for row in rows:
+                for row_index, row in enumerate(rows, start=1):
                     raw = json.loads(row["data"])
+                    if not isinstance(raw, dict):
+                        raise ValueError(
+                            f"Invalid JSON object in SQLite table {table!r} at row "
+                            f"{row_index} from {path}: expected decoded 'data' to be "
+                            f"a dict, got {type(raw).__name__}"
+                        )
                     self._records.append(_parse_raw(raw))
                 return self
             except (sqlite3.OperationalError, KeyError):

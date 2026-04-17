@@ -191,7 +191,6 @@ class GRPOTrainer:
         """
         import random
 
-
         try:
             import torch
             from transformers import AutoModelForCausalLM, AutoTokenizer

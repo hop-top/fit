@@ -20,10 +20,6 @@ from fit.training.tracer import TraceIngester
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="PR #35 review: non-dict JSON blob raises AttributeError, not ValueError",
-)
 class TestSqliteJsonBlobNonDictRegression:
     """load_sqlite deserialises each row's ``data`` column via
     ``json.loads`` then passes the result to ``_parse_raw()``.
@@ -75,10 +71,6 @@ class TestSqliteJsonBlobNonDictRegression:
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="PR #35 review: double blank line after import random triggers E303",
-)
 class TestGrpoDoubleBlankLineRegression:
     """``_train_simplified`` has two consecutive blank lines after
     ``import random`` (lines 193-194), violating Ruff E303 which
@@ -124,31 +116,33 @@ class TestGrpoDoubleBlankLineRegression:
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="PR #35 review: docstring claims xfail but no marker present",
-)
 class TestPR34DocstringClaimsXfailRegression:
     """``TestPR34LoadBatchErrorMessageWordingRegression`` docstring says
     "This test is marked xfail(strict=True)" but the class has no
     ``@pytest.mark.xfail`` decorator, so the test runs normally
     instead of being expected to fail.
+
+    Fix: update the docstring to not claim xfail.
     """
 
-    def test_xfail_marker_present_on_class(self) -> None:
-        """Class that claims xfail in its docstring must actually
-        have the pytest.mark.xfail marker."""
+    def test_docstring_does_not_claim_xfail(self) -> None:
+        """Docstring must not claim xfail if no marker is present."""
         from tests.test_tracer import (
             TestPR34LoadBatchErrorMessageWordingRegression,
         )
 
+        doc = TestPR34LoadBatchErrorMessageWordingRegression.__doc__ or ""
         markers = getattr(
             TestPR34LoadBatchErrorMessageWordingRegression,
             "pytestmark",
             [],
         )
         marker_names = [m.name for m in markers]
-        assert "xfail" in marker_names, (
+        has_xfail_marker = "xfail" in marker_names
+        claims_xfail = "xfail" in doc.lower()
+
+        # Either the marker exists, or the docstring doesn't claim it
+        assert has_xfail_marker or not claims_xfail, (
             "Bug confirmed: "
             "TestPR34LoadBatchErrorMessageWordingRegression docstring "
             "claims xfail(strict=True) but no @pytest.mark.xfail "
