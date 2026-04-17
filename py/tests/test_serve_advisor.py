@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -145,7 +146,9 @@ class TestFileAdvisorMalformedJson:
         bad_json = model_dir / "advisor.json"
         bad_json.write_text("{invalid json", encoding="utf-8")
 
-        with pytest.raises(ValueError, match=str(bad_json)):
+        with pytest.raises(
+            ValueError, match=re.escape(str(bad_json))
+        ):
             FileAdvisor(model_dir)
 
 
@@ -200,4 +203,59 @@ class TestServeAdvisorNonDictBodyRegression:
             "do_POST passes _read_body() result straight to "
             "generate_advice() with no dict type check — a JSON "
             "array or scalar crashes with AttributeError"
+        )
+
+
+# -------------------------------------------------------------------
+# Regression: match=str(path) in pytest.raises is regex-unsafe
+# -------------------------------------------------------------------
+
+
+class TestPytestMatchPathRegexRegression:
+    """``pytest.raises(match=str(path))`` treats the string as a
+    regex.  Paths on Windows contain backslashes (``C:\\Users\\...``)
+    which are regex escapes — the match silently fails or errors.
+
+    All ``match=`` arguments derived from filesystem paths must use
+    ``re.escape()`` so that backslashes (and other metacharacters)
+    are treated as literals.
+    """
+
+    def test_match_uses_re_escape_for_paths(self) -> None:
+        """Scan this test file for ``match=str(`` patterns.
+
+        Any path passed to ``pytest.raises(match=...)`` via bare
+        ``str()`` is a latent Windows bug — it must use
+        ``re.escape()`` instead.  This test fails until every
+        occurrence is fixed.
+        """
+        import ast
+        import inspect
+
+        src = inspect.getsource(
+            sys.modules[__name__]
+        )
+
+        tree = ast.parse(src)
+        violations: list[int] = []
+
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.keyword):
+                continue
+            if node.arg != "match":
+                continue
+            val = node.value
+            # match=str(...) — bare str call, no re.escape
+            if (
+                isinstance(val, ast.Call)
+                and isinstance(val.func, ast.Name)
+                and val.func.id == "str"
+            ):
+                violations.append(node.lineno)
+
+        assert not violations, (
+            "pytest.raises(match=str(...)) found at line(s) "
+            f"{violations}. Use re.escape() to avoid regex "
+            "metacharacter issues with filesystem paths on "
+            "Windows."
         )
