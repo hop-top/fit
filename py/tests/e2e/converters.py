@@ -99,7 +99,7 @@ def lex_glue_to_traces(
         text = row["text"]
         label = row["label"]
         label_str = (
-            ",".join(str(l) for l in label)
+            ",".join(str(lbl) for lbl in label)
             if isinstance(label, list)
             else str(label)
         )

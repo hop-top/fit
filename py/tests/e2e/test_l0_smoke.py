@@ -4,8 +4,6 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-import pytest
-
 from fit.training.dataset import DatasetBuilder
 from fit.training.tracer import TraceIngester
 
