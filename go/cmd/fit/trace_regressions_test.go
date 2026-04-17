@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"hop.top/fit"
+	"hop.top/kit/cli"
 )
 
 // Regression: trace list must report error when a session directory is
@@ -43,11 +44,11 @@ func TestTraceListUnreadableSessionDir(t *testing.T) {
 		_ = os.Chmod(badDir, 0o755)
 	})
 
-	var stdout, stderr bytes.Buffer
+	var stdout bytes.Buffer
 
-	listCmd := traceListCmd()
+	root := cli.New(cli.Config{Name: "fit", Version: "test", Short: "test"})
+	listCmd := traceListCmd(root)
 	listCmd.SetOut(&stdout)
-	listCmd.SetErr(&stderr)
 	listCmd.SetArgs([]string{"--dir", tracesDir})
 
 	err := listCmd.Execute()
@@ -55,21 +56,16 @@ func TestTraceListUnreadableSessionDir(t *testing.T) {
 		t.Fatalf("unexpected error from list command: %v", err)
 	}
 
-	combined := stdout.String() + stderr.String()
+	out := stdout.String()
 
 	// The good session must list normally with correct step count.
-	if !strings.Contains(combined, "session-good  (1 steps)") {
-		t.Errorf("expected good session line, got stdout=%q stderr=%q", stdout.String(), stderr.String())
+	if !strings.Contains(out, "session-good  (1 steps)") {
+		t.Errorf("expected good session line, got %q", out)
 	}
 
 	// The bad session must appear with "(steps: ?)".
-	if !strings.Contains(combined, "session-bad  (steps: ?)") {
-		t.Errorf("expected '(steps: ?)' for unreadable session, got stdout=%q stderr=%q", stdout.String(), stderr.String())
-	}
-
-	// A warning about the unreadable session must be emitted.
-	if !strings.Contains(combined, "warning") || !strings.Contains(combined, "session-bad") {
-		t.Errorf("expected warning about session-bad, got stdout=%q stderr=%q", stdout.String(), stderr.String())
+	if !strings.Contains(out, "session-bad  (steps: ?)") {
+		t.Errorf("expected '(steps: ?)' for unreadable session, got %q", out)
 	}
 }
 

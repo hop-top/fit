@@ -9,9 +9,11 @@ import (
 
 	"github.com/spf13/cobra"
 	"hop.top/fit"
+	"hop.top/kit/cli"
+	"hop.top/kit/log"
 )
 
-func traceCmd() *cobra.Command {
+func traceCmd(root *cli.Root) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "trace",
 		Short: "Inspect/convert trace files",
@@ -22,14 +24,15 @@ between YAML and JSON formats.`,
 	}
 
 	// Subcommands
-	cmd.AddCommand(traceListCmd())
+	cmd.AddCommand(traceListCmd(root))
 	cmd.AddCommand(traceShowCmd())
 
 	return cmd
 }
 
-func traceListCmd() *cobra.Command {
+func traceListCmd(root *cli.Root) *cobra.Command {
 	var tracesDir string
+	logger := log.New(root.Viper)
 
 	cmd := &cobra.Command{
 		Use:   "list",
@@ -52,7 +55,7 @@ func traceListCmd() *cobra.Command {
 				// Count steps in this session
 				steps, err := os.ReadDir(filepath.Join(tracesDir, e.Name()))
 				if err != nil {
-					fmt.Fprintf(cmd.OutOrStderr(), "warning: cannot read session %s: %v\n", e.Name(), err)
+					logger.Warn("cannot read session", "session", e.Name(), "err", err)
 					fmt.Fprintf(cmd.OutOrStdout(), "%s  (steps: ?)\n", e.Name())
 					continue
 				}

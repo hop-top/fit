@@ -11,9 +11,10 @@ import (
 
 	"github.com/spf13/cobra"
 	"hop.top/fit"
+	"hop.top/kit/cli"
 )
 
-func serveCmd() *cobra.Command {
+func serveCmd(_ *cli.Root) *cobra.Command {
 	var (
 		addr        string
 		advisorModel string

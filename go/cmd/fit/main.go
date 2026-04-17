@@ -22,9 +22,9 @@ func main() {
 		Short:   "Train small advisor models to steer black-box LLMs",
 	})
 
-	root.Cmd.AddCommand(serveCmd())
-	root.Cmd.AddCommand(evalCmd())
-	root.Cmd.AddCommand(traceCmd())
+	root.Cmd.AddCommand(serveCmd(root))
+	root.Cmd.AddCommand(evalCmd(root))
+	root.Cmd.AddCommand(traceCmd(root))
 
 	if err := root.Execute(context.Background()); err != nil {
 		os.Exit(1)

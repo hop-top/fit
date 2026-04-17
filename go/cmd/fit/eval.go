@@ -9,9 +9,10 @@ import (
 
 	"github.com/spf13/cobra"
 	"hop.top/fit"
+	"hop.top/kit/cli"
 )
 
-func evalCmd() *cobra.Command {
+func evalCmd(_ *cli.Root) *cobra.Command {
 	var (
 		datasetPath string
 	)
