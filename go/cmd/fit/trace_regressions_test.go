@@ -6,7 +6,6 @@ import (
 	"math"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 
 	"hop.top/fit"
@@ -20,6 +19,9 @@ import (
 // via `steps, _ := os.ReadDir(...)`, hiding permission/IO problems and
 // misreporting step counts. After fix: a warning is printed and the
 // session is shown with "(steps: ?)".
+//
+// Assertions use JSON format and exact field checks instead of loose
+// string matching.
 func TestTraceListUnreadableSessionDir(t *testing.T) {
 	// Set up traces dir with one good and one unreadable session.
 	tracesDir := t.TempDir()
@@ -47,6 +49,7 @@ func TestTraceListUnreadableSessionDir(t *testing.T) {
 	var stdout bytes.Buffer
 
 	root := cli.New(cli.Config{Name: "fit", Version: "test", Short: "test"})
+	root.Viper.Set("format", "json")
 	listCmd := traceListCmd(root)
 	listCmd.SetOut(&stdout)
 	listCmd.SetArgs([]string{"--dir", tracesDir})
@@ -56,16 +59,36 @@ func TestTraceListUnreadableSessionDir(t *testing.T) {
 		t.Fatalf("unexpected error from list command: %v", err)
 	}
 
-	out := stdout.String()
-
-	// The good session must appear with step count.
-	if !strings.Contains(out, "session-good") || !strings.Contains(out, "1") {
-		t.Errorf("expected good session with 1 step, got %q", out)
+	// Decode as JSON array of traceRow objects.
+	var rows []traceRow
+	if err := json.Unmarshal(stdout.Bytes(), &rows); err != nil {
+		t.Fatalf("JSON decode failed: %v\nraw output: %s", err, stdout.String())
 	}
 
-	// The bad session must appear with "?" for steps.
-	if !strings.Contains(out, "session-bad") || !strings.Contains(out, "?") {
-		t.Errorf("expected session-bad with '?' steps, got %q", out)
+	if len(rows) != 2 {
+		t.Fatalf("expected 2 rows, got %d: %+v", len(rows), rows)
+	}
+
+	// Build lookup by session name.
+	bySession := make(map[string]traceRow, len(rows))
+	for _, r := range rows {
+		bySession[r.Session] = r
+	}
+
+	good, ok := bySession["session-good"]
+	if !ok {
+		t.Fatal("missing session-good in output")
+	}
+	if good.Steps != "1" {
+		t.Errorf("session-good steps = %q, want \"1\"", good.Steps)
+	}
+
+	bad, ok := bySession["session-bad"]
+	if !ok {
+		t.Fatal("missing session-bad in output")
+	}
+	if bad.Steps != "?" {
+		t.Errorf("session-bad steps = %q, want \"?\"", bad.Steps)
 	}
 }
 

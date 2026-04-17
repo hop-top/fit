@@ -13,6 +13,7 @@ import (
 	"os"
 
 	"hop.top/kit/cli"
+	"hop.top/kit/log"
 )
 
 func main() {
@@ -23,7 +24,10 @@ func main() {
 	})
 
 	// Load layered config; errors are non-fatal (defaults apply).
-	_ = LoadConfig()
+	if err := LoadConfig(); err != nil {
+		logger := log.New(root.Viper)
+		logger.Warn("config load failed, using defaults", "err", err)
+	}
 
 	root.Cmd.AddCommand(serveCmd(root))
 	root.Cmd.AddCommand(evalCmd(root))

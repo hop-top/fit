@@ -87,6 +87,28 @@ func TestFitConfigEnvOverride(t *testing.T) {
 	}
 }
 
+// Regression: LoadConfig must return an error (not nil) when the project
+// config file contains malformed YAML. This proves the warning path in
+// main.go will be hit.
+func TestLoadConfigReturnsErrorOnBadYAML(t *testing.T) {
+	dir := t.TempDir()
+	badFile := filepath.Join(dir, ".fit.yaml")
+	if err := os.WriteFile(badFile, []byte("{{invalid yaml"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	// Save and restore globalConfig.
+	saved := globalConfig
+	t.Cleanup(func() { globalConfig = saved })
+
+	err := config.Load(&globalConfig, config.Options{
+		ProjectConfigPath: badFile,
+	})
+	if err == nil {
+		t.Error("expected error from malformed YAML, got nil")
+	}
+}
+
 func TestFitConfigLayerOrder(t *testing.T) {
 	// File sets addr=:9090, env overrides to :7070.
 	dir := t.TempDir()

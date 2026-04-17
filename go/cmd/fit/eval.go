@@ -26,6 +26,12 @@ type evalSummary struct {
 	AvgScore float64 `json:"avg_score" yaml:"avg_score" table:"Avg Score"`
 }
 
+// evalOutput wraps results + summary for single-document structured output.
+type evalOutput struct {
+	Results []evalRow   `json:"results" yaml:"results"`
+	Summary evalSummary `json:"summary" yaml:"summary"`
+}
+
 func evalCmd(root *cli.Root) *cobra.Command {
 	var (
 		datasetPath string
@@ -61,7 +67,7 @@ and prints scores to stdout.`,
 				session := fit.NewSession(advisor, adapter, scorer)
 				result, err := session.Run(cmd.Context(), tc.Prompt, tc.Context)
 				if err != nil {
-					fmt.Fprintf(cmd.OutOrStdout(), "FAIL: %s: %v\n", tc.Prompt, err)
+					fmt.Fprintf(cmd.ErrOrStderr(), "FAIL: %s: %v\n", tc.Prompt, err)
 					continue
 				}
 				scoreVal := 0.0
@@ -76,21 +82,30 @@ and prints scores to stdout.`,
 				})
 			}
 
-			if err := output.Render(cmd.OutOrStdout(), format, rows); err != nil {
-				return err
-			}
-
+			summary := evalSummary{}
 			if len(rows) > 0 {
-				summary := evalSummary{
+				summary = evalSummary{
 					Cases:    len(rows),
 					AvgScore: totalScore / float64(len(rows)),
 				}
-				fmt.Fprintln(cmd.OutOrStdout())
-				if err := output.Render(cmd.OutOrStdout(), format, summary); err != nil {
-					return err
-				}
 			}
 
+			// For structured formats, emit a single document.
+			if format != output.Table {
+				return output.Render(cmd.OutOrStdout(), format, evalOutput{
+					Results: rows,
+					Summary: summary,
+				})
+			}
+
+			// Table format: render rows then summary separately.
+			if err := output.Render(cmd.OutOrStdout(), format, rows); err != nil {
+				return err
+			}
+			if len(rows) > 0 {
+				fmt.Fprintln(cmd.OutOrStdout())
+				return output.Render(cmd.OutOrStdout(), format, summary)
+			}
 			return nil
 		},
 	}
