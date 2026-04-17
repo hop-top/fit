@@ -76,10 +76,25 @@ def _parse_raw(raw: dict[str, Any]) -> TraceRecord:
     )
 
 
+@dataclass(frozen=True)
+class TraceIngestConfig:
+    """Configuration for TraceIngester ingestion behavior.
+
+    Defaults match current hardcoded behavior exactly.
+    """
+
+    yaml_glob: str = "*.y*ml"
+    required_keys: tuple[str, ...] = ("input", "frontier")
+    sqlite_data_column: str = "data"
+    metadata_filters: dict[str, Any] = field(default_factory=dict)
+    field_filters: dict[str, Any] = field(default_factory=dict)
+
+
 class TraceIngester:
     """Load and filter trace data from JSONL, YAML cassettes, or SQLite."""
 
-    def __init__(self) -> None:
+    def __init__(self, config: TraceIngestConfig | None = None) -> None:
+        self._config = config or TraceIngestConfig()
         self._records: list[TraceRecord] = []
 
     # -- loaders --
@@ -119,7 +134,7 @@ class TraceIngester:
         if not path.is_dir():
             raise NotADirectoryError(f"YAML dir not found: {path}")
 
-        for yaml_file in sorted(path.rglob("*.y*ml")):
+        for yaml_file in sorted(path.rglob(self._config.yaml_glob)):
             with yaml_file.open("r", encoding="utf-8") as f:
                 try:
                     raw = yaml.safe_load(f)
@@ -134,8 +149,8 @@ class TraceIngester:
             else:
                 candidates = []
             for item in candidates:
-                if isinstance(item, dict) and (
-                    "input" in item or "frontier" in item
+                if isinstance(item, dict) and _has_required_keys(
+                    item, self._config.required_keys
                 ):
                     self._records.append(_parse_raw(item))
         return self
@@ -159,10 +174,11 @@ class TraceIngester:
             conn.row_factory = sqlite3.Row
             # Try JSON blob column first
             try:
-                cursor = conn.execute(f"SELECT data FROM {table}")
+                col = self._config.sqlite_data_column
+                cursor = conn.execute(f"SELECT {col} FROM {table}")
                 for row_index, row in enumerate(cursor, start=1):
                     try:
-                        raw = json.loads(row["data"])
+                        raw = json.loads(row[col])
                     except (json.JSONDecodeError, TypeError) as exc:
                         raise ValueError(
                             f"Invalid JSON in SQLite table {table!r} at "
@@ -252,12 +268,12 @@ class TraceIngester:
                             f"Invalid YAML in {p}: {exc}"
                         ) from exc
                     if isinstance(raw, dict):
-                        if "input" in raw or "frontier" in raw:
+                        if _has_required_keys(raw, self._config.required_keys):
                             self._records.append(_parse_raw(raw))
                     elif isinstance(raw, list):
                         for item in raw:
                             if isinstance(item, dict) and (
-                                "input" in item or "frontier" in item
+                                _has_required_keys(item, self._config.required_keys)
                             ):
                                 self._records.append(_parse_raw(item))
             elif detected == "sqlite":
@@ -278,10 +294,10 @@ class TraceIngester:
                                 f"a dict (JSON object), but item at index {idx} is "
                                 f"{type(item).__name__}"
                             )
-                        if "input" in item or "frontier" in item:
+                        if _has_required_keys(item, self._config.required_keys):
                             self._records.append(_parse_raw(item))
                 elif isinstance(raw, dict):
-                    if "input" in raw or "frontier" in raw:
+                    if _has_required_keys(raw, self._config.required_keys):
                         self._records.append(_parse_raw(raw))
                 else:
                     raise ValueError(
@@ -304,12 +320,21 @@ class TraceIngester:
 
         Returns a new TraceIngester with filtered records (non-mutating).
         Tenant is extracted from metadata.tenant if present.
+        Call-time kwargs take precedence over config filters.
         """
-        result = TraceIngester()
+        # Merge config metadata filters (config is base, kwargs override).
+        effective_domain = domain
+        effective_tenant = tenant
+        if effective_domain is None:
+            effective_domain = self._config.metadata_filters.get("domain")
+        if effective_tenant is None:
+            effective_tenant = self._config.metadata_filters.get("tenant")
+
+        result = TraceIngester(config=self._config)
         for rec in self._records:
-            if domain and rec.advice_domain != domain:
+            if effective_domain and rec.advice_domain != effective_domain:
                 continue
-            if tenant and rec.metadata.get("tenant") != tenant:
+            if effective_tenant and rec.metadata.get("tenant") != effective_tenant:
                 continue
             if since and not _ts_gte(rec.timestamp, since):
                 continue
@@ -326,6 +351,11 @@ class TraceIngester:
 
     def count(self) -> int:
         return len(self._records)
+
+
+def _has_required_keys(d: dict, keys: tuple[str, ...]) -> bool:
+    """Return True if d contains at least one of the required keys."""
+    return any(k in d for k in keys)
 
 
 def _detect_format(path: Path) -> str:
