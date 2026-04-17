@@ -62,7 +62,12 @@ class FileAdvisor(Advisor):
                 try:
                     import yaml
 
-                    data = yaml.safe_load(candidate.read_text(encoding="utf-8"))
+                    try:
+                        data = yaml.safe_load(candidate.read_text(encoding="utf-8"))
+                    except yaml.YAMLError as exc:
+                        raise ValueError(
+                            f"Invalid YAML in {candidate}: {exc}"
+                        ) from exc
                     return data if isinstance(data, dict) else {}
                 except ImportError:
                     print(

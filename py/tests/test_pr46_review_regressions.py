@@ -31,13 +31,6 @@ class TestLoadBatchJsonMissingJSONDecodeErrorCatch:
     Actual:   raw ``json.JSONDecodeError``.
     """
 
-    @pytest.mark.xfail(
-        strict=True,
-        reason=(
-            "load_batch JSON branch does not catch json.JSONDecodeError; "
-            "raw exception escapes without file-path context"
-        ),
-    )
     def test_malformed_json_raises_value_error_with_path(
         self, tmp_path: Path
     ) -> None:
@@ -74,13 +67,6 @@ class TestServeAdvisorMissingYAMLErrorCatch:
     Actual:   raw ``yaml.YAMLError``.
     """
 
-    @pytest.mark.xfail(
-        strict=True,
-        reason=(
-            "FileAdvisor._load_config does not catch yaml.YAMLError; "
-            "raw exception escapes without file-path context"
-        ),
-    )
     def test_malformed_yaml_config_raises_value_error_or_falls_back(
         self, tmp_path: Path
     ) -> None:
@@ -121,13 +107,6 @@ class TestLoadBatchJsonlBranchOnDirectory:
     Actual:   ``IsADirectoryError``.
     """
 
-    @pytest.mark.xfail(
-        strict=True,
-        reason=(
-            "load_batch JSONL branch does not check if path is a directory; "
-            "passes directory directly to load_jsonl which crashes"
-        ),
-    )
     def test_jsonl_directory_loads_records_without_error(
         self, tmp_path: Path
     ) -> None:
@@ -174,13 +153,6 @@ class TestDetectFormatMissingNdjsonGlob:
     Actual:   ``"yaml"`` (default).
     """
 
-    @pytest.mark.xfail(
-        strict=True,
-        reason=(
-            "_detect_format does not glob *.ndjson in directories; "
-            "directories with only .ndjson files default to 'yaml'"
-        ),
-    )
     def test_ndjson_directory_detected_as_jsonl(
         self, tmp_path: Path
     ) -> None:

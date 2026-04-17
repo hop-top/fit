@@ -205,7 +205,13 @@ class TraceIngester:
                 detected = _detect_format(p)
 
             if detected == "jsonl":
-                self.load_jsonl(p)
+                if p.is_dir():
+                    for jsonl_path in sorted(p.rglob("*.jsonl")):
+                        self.load_jsonl(jsonl_path)
+                    for jsonl_path in sorted(p.rglob("*.ndjson")):
+                        self.load_jsonl(jsonl_path)
+                else:
+                    self.load_jsonl(p)
             elif detected == "yaml":
                 if p.is_dir():
                     self.load_yaml_dir(p)
@@ -229,8 +235,13 @@ class TraceIngester:
             elif detected == "sqlite":
                 self.load_sqlite(p)
             elif detected == "json":
-                with p.open("r", encoding="utf-8") as f:
-                    raw = json.load(f)
+                try:
+                    with p.open("r", encoding="utf-8") as f:
+                        raw = json.load(f)
+                except json.JSONDecodeError as exc:
+                    raise ValueError(
+                        f"Invalid JSON in {p}: {exc}"
+                    ) from exc
                 if isinstance(raw, list):
                     for idx, item in enumerate(raw):
                         if not isinstance(item, dict):
@@ -296,7 +307,7 @@ def _detect_format(path: Path) -> str:
         if any(path.rglob("*.y*ml")):
             return "yaml"
         # Check for JSONL files
-        if any(path.glob("*.jsonl")):
+        if any(path.glob("*.jsonl")) or any(path.glob("*.ndjson")):
             return "jsonl"
         return "yaml"  # default for dirs
 
