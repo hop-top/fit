@@ -3,7 +3,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "fit"
+name = "hop-top-fit"
 version = "0.1.0"
 description = "Train small advisor models to steer black-box LLMs"
 readme = "README.md"

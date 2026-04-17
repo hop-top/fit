@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace Hop\Fit\Tests;
+namespace HopTop\Fit\Tests;
 
-use Hop\Fit\Advice;
-use Hop\Fit\Reward;
-use Hop\Fit\Trace;
-use Hop\Fit\TraceWriter;
+use HopTop\Fit\Advice;
+use HopTop\Fit\Reward;
+use HopTop\Fit\Trace;
+use HopTop\Fit\TraceWriter;
 use PHPUnit\Framework\TestCase;
 
 class TraceWriterRegressionTest extends TestCase

@@ -1,0 +1,126 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  ci:
+    name: ${{ matrix.language }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [go, ts, py, rs, php]
+        include:
+          - language: go
+            go-version: "1.26"
+          - language: ts
+            node-version: "22"
+          - language: py
+            python-version: "3.11"
+          - language: rs
+            rust-toolchain: stable
+          - language: php
+            php-version: "8.3"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Task
+        uses: arduino/setup-task@v2
+        with:
+          version: 3.x
+
+      # --- Go ---
+      - name: Setup Go
+        if: matrix.language == 'go'
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ matrix.go-version }}
+          cache-dependency-path: go/go.sum
+
+      - name: Go install + lint + test
+        if: matrix.language == 'go'
+        run: |
+          task install:go
+          task lint:go
+          task test:go
+
+      # --- TypeScript ---
+      - name: Setup Node
+        if: matrix.language == 'ts'
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+
+      - name: Setup pnpm
+        if: matrix.language == 'ts'
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: TS install + lint + test
+        if: matrix.language == 'ts'
+        run: |
+          task install:ts
+          task lint:ts
+          task test:ts
+
+      # --- Python ---
+      - name: Setup Python
+        if: matrix.language == 'py'
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Python install + lint + test
+        if: matrix.language == 'py'
+        run: |
+          task install:py
+          task lint:py
+          task test:py
+
+      # --- Rust ---
+      - name: Setup Rust
+        if: matrix.language == 'rs'
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+
+      - name: Rust cache
+        if: matrix.language == 'rs'
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: rs
+
+      - name: Rust install + lint + test
+        if: matrix.language == 'rs'
+        run: |
+          task install:rs
+          task lint:rs
+          task test:rs
+
+      # --- PHP ---
+      - name: Setup PHP
+        if: matrix.language == 'php'
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php-version }}
+          tools: composer:v2
+
+      - name: PHP install + lint + test
+        if: matrix.language == 'php'
+        run: |
+          task install:php
+          task lint:php
+          task test:php
