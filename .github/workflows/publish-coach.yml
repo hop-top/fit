@@ -33,7 +33,7 @@ jobs:
     if: needs.check-tag.outputs.is-coach == 'true'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
@@ -74,7 +74,7 @@ jobs:
       name: pypi
       url: https://pypi.org/project/hop-top-fit-coach/
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
@@ -111,7 +111,7 @@ jobs:
     if: needs.check-tag.outputs.is-coach == 'true'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: dtolnay/rust-toolchain@stable
 
       - name: Verify version
@@ -138,7 +138,7 @@ jobs:
     if: needs.check-tag.outputs.is-coach == 'true'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: shivammathur/setup-php@v2
         with:
           php-version: "8.3"
