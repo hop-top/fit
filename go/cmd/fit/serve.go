@@ -4,17 +4,16 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"os"
-	"os/signal"
-	"syscall"
 	"time"
 
 	"github.com/spf13/cobra"
 	"hop.top/fit"
+	"hop.top/kit/api"
 	"hop.top/kit/cli"
+	"hop.top/kit/log"
 )
 
-func serveCmd(_ *cli.Root) *cobra.Command {
+func serveCmd(root *cli.Root) *cobra.Command {
 	var (
 		addr         string
 		advisorModel string
@@ -42,36 +41,27 @@ advice conforming to advice-format-v1.`,
 				timeout = cfg.Timeout
 			}
 
+			logger := log.New(root.Viper)
 			advisor := &stubAdvisor{model: advisorModel}
 
-			mux := http.NewServeMux()
-			mux.HandleFunc("POST /advise", handleAdvise(advisor, timeout))
+			router := api.NewRouter(
+				api.WithMiddleware(
+					api.Recovery(func(v any, r *http.Request) {
+						logger.Error("panic recovered", "err", v, "path", r.URL.Path)
+					}),
+					api.Logger(func(msg string, args ...any) {
+						logger.Info(msg, args...)
+					}),
+					api.RequestID(),
+				),
+			)
+			router.Handle("POST", "/advise", handleAdvise(advisor, timeout))
 
-			srv := &http.Server{
-				Addr:         addr,
-				Handler:      mux,
-				ReadTimeout:  time.Duration(timeout) * time.Millisecond,
-				WriteTimeout: time.Duration(timeout*2) * time.Millisecond,
-			}
-
-			errCh := make(chan error, 1)
-			go func() {
-				fmt.Fprintf(cmd.OutOrStdout(), "fit advisor serving on %s\n", addr)
-				errCh <- srv.ListenAndServe()
-			}()
-
-			sigCh := make(chan os.Signal, 1)
-			signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
-
-			select {
-			case err := <-errCh:
-				return err
-			case sig := <-sigCh:
-				fmt.Fprintf(cmd.OutOrStdout(), "\nreceived %s, shutting down\n", sig)
-				ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-				defer cancel()
-				return srv.Shutdown(ctx)
-			}
+			fmt.Fprintf(cmd.OutOrStdout(), "fit advisor serving on %s\n", addr)
+			return api.ListenAndServeWithSignals(addr, router,
+				api.WithReadTimeout(time.Duration(timeout)*time.Millisecond),
+				api.WithWriteTimeout(time.Duration(timeout*2)*time.Millisecond),
+			)
 		},
 	}
 
