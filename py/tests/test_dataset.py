@@ -211,11 +211,6 @@ class TestPR33SplitValRatioValidationRegression:
     Fix should raise ValueError for out-of-range ratios.
     """
 
-    @pytest.mark.xfail(
-        reason="PR #33 bug: split accepts negative val_ratio without "
-               "raising ValueError",
-        strict=True,
-    )
     def test_negative_val_ratio_raises_value_error(self) -> None:
         """split(val_ratio=-0.1) must raise ValueError."""
         examples = [
@@ -224,11 +219,6 @@ class TestPR33SplitValRatioValidationRegression:
         with pytest.raises(ValueError, match="val_ratio"):
             FitDataset(examples).split(val_ratio=-0.1)
 
-    @pytest.mark.xfail(
-        reason="PR #33 bug: split accepts val_ratio > 1.0 without "
-               "raising ValueError",
-        strict=True,
-    )
     def test_val_ratio_above_one_raises_value_error(self) -> None:
         """split(val_ratio=1.5) must raise ValueError."""
         examples = [

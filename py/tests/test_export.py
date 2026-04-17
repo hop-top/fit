@@ -319,14 +319,9 @@ class TestPR33TorchLoadWeightsOnlyRegression:
     """torch.load(..., weights_only=True) raises TypeError on torch < 1.13.
     to_safetensors() must catch TypeError and retry without weights_only."""
 
-    @pytest.mark.xfail(
-        reason="PR #33 bug: torch.load(..., weights_only=True) raises "
-        "TypeError on torch < 1.13; needs try/except TypeError fallback"
-    )
     def test_safetensors_torch_load_catches_type_error(
         self, tmp_path: Path
     ) -> None:
-
         model_dir = tmp_path / "model"
         model_dir.mkdir()
         (model_dir / "pytorch_model.bin").write_bytes(b"fakeweights")
@@ -346,27 +341,26 @@ class TestPR33TorchLoadWeightsOnlyRegression:
                 )
             return fake_state
 
-        with (
-            patch("fit.training.export.torch") as mock_torch,
-            patch("fit.training.export.save_file") as mock_save,
-        ):
-            mock_torch.load = mock_torch_load
+        fake_torch = MagicMock(load=mock_torch_load)
+        fake_sf = MagicMock()
+        fake_sf.torch = MagicMock(save_file=MagicMock())
+
+        with patch.dict("sys.modules", {
+            "torch": fake_torch,
+            "safetensors": fake_sf,
+            "safetensors.torch": fake_sf.torch,
+        }):
             out = exporter.to_safetensors(str(tmp_path / "out"))
 
         assert call_count == 2, (
             f"Expected 2 calls to torch.load (1st with weights_only "
             f"raising TypeError, 2nd without), got {call_count}"
         )
-        assert (out / "model.safetensors").parent.exists()
+        assert out.parent.exists()
 
-    @pytest.mark.xfail(
-        reason="PR #33 bug: torch.load(..., weights_only=True) raises "
-        "TypeError on torch < 1.13; needs try/except TypeError fallback"
-    )
     def test_safetensors_torch_load_weights_only_preferred(
         self, tmp_path: Path
     ) -> None:
-
         model_dir = tmp_path / "model"
         model_dir.mkdir()
         (model_dir / "pytorch_model.bin").write_bytes(b"fakeweights")
@@ -374,16 +368,20 @@ class TestPR33TorchLoadWeightsOnlyRegression:
         exporter = ModelExporter(str(model_dir))
 
         fake_state = {"layer.weight": MagicMock(numpy=lambda: MagicMock())}
+        mock_load = MagicMock(return_value=fake_state)
+        fake_torch = MagicMock(load=mock_load)
+        fake_sf = MagicMock()
+        fake_sf.torch = MagicMock(save_file=MagicMock())
 
-        with (
-            patch("fit.training.export.torch") as mock_torch,
-            patch("fit.training.export.save_file") as mock_save,
-        ):
-            mock_torch.load = MagicMock(return_value=fake_state)
+        with patch.dict("sys.modules", {
+            "torch": fake_torch,
+            "safetensors": fake_sf,
+            "safetensors.torch": fake_sf.torch,
+        }):
             exporter.to_safetensors(str(tmp_path / "out"))
 
-        mock_torch.load.assert_called_once()
-        _, kwargs = mock_torch.load.call_args
+        mock_load.assert_called_once()
+        _, kwargs = mock_load.call_args
         assert kwargs.get("weights_only") is True, (
             "torch.load should be called with weights_only=True when "
             f"torch supports it. Got kwargs: {kwargs}"

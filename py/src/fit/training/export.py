@@ -51,11 +51,18 @@ class ModelExporter:
                         "requires torch. Install with: pip install torch"
                     ) from exc
 
-                state_dict = torch.load(
-                    str(bin_file),
-                    map_location="cpu",
-                    weights_only=True,
-                )
+                try:
+                    state_dict = torch.load(
+                        str(bin_file),
+                        map_location="cpu",
+                        weights_only=True,
+                    )
+                except TypeError:
+                    # torch < 1.13 doesn't support weights_only
+                    state_dict = torch.load(
+                        str(bin_file),
+                        map_location="cpu",
+                    )
                 save_file(state_dict, str(out / "model.safetensors"))
             else:
                 logger.warning("No model weights found at %s", self._model_path)

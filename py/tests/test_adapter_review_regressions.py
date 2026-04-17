@@ -135,10 +135,6 @@ class TestPR33OpenAIUsageNoneRegression:
     """response.usage can be None in some OpenAI response modes/configs.
     Accessing .prompt_tokens on None crashes with AttributeError."""
 
-    @pytest.mark.xfail(
-        reason="PR #33 bug: response.usage can be None; accessing "
-        ".prompt_tokens crashes with AttributeError"
-    )
     def test_usage_none_returns_zero_tokens(self) -> None:
         mock_client = MagicMock()
         mock_response = MagicMock()
@@ -163,10 +159,6 @@ class TestPR33OpenAIUsageNoneRegression:
             "usage.total_tokens must default to 0 when usage is None"
         )
 
-    @pytest.mark.xfail(
-        reason="PR #33 bug: response.usage can be None; accessing "
-        ".prompt_tokens crashes with AttributeError"
-    )
     def test_usage_present_returns_actual_tokens(self) -> None:
         mock_client = MagicMock()
         mock_response = MagicMock()

@@ -67,7 +67,7 @@ def _parse_raw(raw: dict[str, Any]) -> TraceRecord:
         context=context,
         advice_text=advice.get("steering_text", ""),
         advice_domain=advice.get("domain", "unknown"),
-        advice_confidence=float(advice.get("confidence", 0.0)),
+        advice_confidence=_safe_float(advice.get("confidence", 0.0)),
         frontier_output=frontier.get("output", ""),
         frontier_model=frontier.get("model", ""),
         reward_score=reward.get("score"),
@@ -97,9 +97,15 @@ class TraceIngester:
                     continue
                 try:
                     raw = json.loads(line)
-                    self._records.append(_parse_raw(raw))
                 except json.JSONDecodeError as exc:
                     raise ValueError(f"Invalid JSON at {path}:{line_no}: {exc}") from exc
+
+                if not isinstance(raw, dict):
+                    raise ValueError(
+                        f"Invalid trace record at {path}:{line_no}: "
+                        f"expected JSON object, got {type(raw).__name__}"
+                    )
+                self._records.append(_parse_raw(raw))
         return self
 
     def load_yaml_dir(self, path: str | Path) -> TraceIngester:
@@ -195,7 +201,13 @@ class TraceIngester:
                 with p.open("r", encoding="utf-8") as f:
                     raw = json.load(f)
                 if isinstance(raw, list):
-                    for item in raw:
+                    for idx, item in enumerate(raw):
+                        if not isinstance(item, dict):
+                            raise ValueError(
+                                f"Expected each item in JSON array {p} to be "
+                                f"an object, but item at index {idx} is "
+                                f"{type(item).__name__}"
+                            )
                         self._records.append(_parse_raw(item))
                 elif isinstance(raw, dict):
                     self._records.append(_parse_raw(raw))
@@ -259,6 +271,14 @@ def _detect_format(path: Path) -> str:
     if suffix == ".json":
         return "json"
     return "jsonl"
+
+
+def _safe_float(value: Any, default: float = 0.0) -> float:
+    """Safely convert a value to float, returning default on failure."""
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return default
 
 
 def _parse_ts(value: str | datetime) -> datetime:

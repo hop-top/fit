@@ -31,10 +31,16 @@ class FitDataset:
         seed: int = 42,
     ) -> tuple[FitDataset, FitDataset]:
         """Split into (train, val) datasets. Deterministic with seed."""
+        if not 0.0 <= val_ratio <= 1.0:
+            raise ValueError(
+                f"val_ratio must be between 0.0 and 1.0, got {val_ratio}"
+            )
         rng = random.Random(seed)
         indices = list(range(len(self._examples)))
         rng.shuffle(indices)
         val_count = int(len(indices) * val_ratio)
+        if val_count == 0 and val_ratio > 0 and len(indices) > 0:
+            val_count = 1
         if val_count >= len(indices) and len(indices) > 0:
             val_count = len(indices) - 1
         val_idx = set(indices[:val_count])

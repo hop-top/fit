@@ -480,34 +480,22 @@ class TestPR33JsonlNonDictLineRegression:
     Fix should raise ValueError with a clear message.
     """
 
-    @pytest.mark.xfail(
-        reason="PR #33 bug: load_jsonl passes non-dict JSON to "
-               "_parse_raw, crashes with AttributeError instead of "
-               "ValueError",
-        strict=True,
-    )
     def test_jsonl_array_line_raises_value_error(
         self, tmp_path: Path
     ) -> None:
         """A JSONL file with [] on a line must raise ValueError."""
         jsonl = tmp_path / "bad.jsonl"
         jsonl.write_text("[]\n", encoding="utf-8")
-        with pytest.raises(ValueError, match="dict"):
+        with pytest.raises(ValueError, match="expected JSON object"):
             TraceIngester().load_jsonl(jsonl)
 
-    @pytest.mark.xfail(
-        reason="PR #33 bug: load_jsonl passes non-dict JSON to "
-               "_parse_raw, crashes with AttributeError instead of "
-               "ValueError",
-        strict=True,
-    )
     def test_jsonl_string_line_raises_value_error(
         self, tmp_path: Path
     ) -> None:
         """A JSONL file with "hello" on a line must raise ValueError."""
         jsonl = tmp_path / "bad.jsonl"
         jsonl.write_text('"hello"\n', encoding="utf-8")
-        with pytest.raises(ValueError, match="dict"):
+        with pytest.raises(ValueError, match="expected JSON object"):
             TraceIngester().load_jsonl(jsonl)
 
 
@@ -520,12 +508,6 @@ class TestPR33ConfidenceTypeRegression:
     float("high") raises ValueError. Fix should coerce to 0.0.
     """
 
-    @pytest.mark.xfail(
-        reason="PR #33 bug: confidence=null causes float(None) "
-               "TypeError — dict.get returns None for existing key "
-               "with null value",
-        strict=True,
-    )
     def test_parse_raw_null_confidence_returns_zero(self) -> None:
         """advice.confidence=null must produce advice_confidence=0.0."""
         from fit.training.tracer import _parse_raw
@@ -533,11 +515,6 @@ class TestPR33ConfidenceTypeRegression:
         rec = _parse_raw({"input": {}, "advice": {"confidence": None}})
         assert rec.advice_confidence == 0.0
 
-    @pytest.mark.xfail(
-        reason="PR #33 bug: confidence='high' causes float('high') "
-               "ValueError — non-numeric string not coerced to 0.0",
-        strict=True,
-    )
     def test_parse_raw_string_confidence_returns_zero(self) -> None:
         """advice.confidence='high' must produce advice_confidence=0.0."""
         from fit.training.tracer import _parse_raw
@@ -565,11 +542,6 @@ class TestPR33LoadBatchJsonNonDictRegression:
     Fix should raise ValueError with a clear message.
     """
 
-    @pytest.mark.xfail(
-        reason="PR #33 bug: load_batch JSON path passes non-dict list "
-               "items to _parse_raw, crashes with AttributeError",
-        strict=True,
-    )
     def test_json_array_with_non_dict_items_raises(
         self, tmp_path: Path
     ) -> None:

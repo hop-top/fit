@@ -52,14 +52,15 @@ class OpenAIAdapter(Adapter):
         )
 
         output = response.choices[0].message.content or ""
+        usage = response.usage
         metadata = {
             "model": response.model,
             "provider": "openai",
             "output": output,
             "usage": {
-                "prompt_tokens": response.usage.prompt_tokens,
-                "completion_tokens": response.usage.completion_tokens,
-                "total_tokens": response.usage.total_tokens,
+                "prompt_tokens": getattr(usage, "prompt_tokens", 0) or 0,
+                "completion_tokens": getattr(usage, "completion_tokens", 0) or 0,
+                "total_tokens": getattr(usage, "total_tokens", 0) or 0,
             },
         }
         return output, metadata
