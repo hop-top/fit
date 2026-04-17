@@ -271,3 +271,31 @@ class TestSqliteCursorStreaming:
         fallback_start = source.index("Fallback: individual columns")
         fallback_section = source[fallback_start:]
         assert ".fetchall()" not in fallback_section
+
+
+class TestSqliteNullBlobTypeErrorRegression:
+    """Regression: SQL NULL in data column must raise ValueError.
+
+    When the ``data`` column contains SQL NULL, ``row["data"]``
+    is Python ``None``.  ``json.loads(None)`` raises ``TypeError``,
+    NOT ``json.JSONDecodeError``.  The ``except json.JSONDecodeError``
+    handler misses it, leaking a raw ``TypeError`` without table/row
+    context.  The fix should catch this and re-raise as ``ValueError``
+    with row number in the message.
+    """
+
+    def test_null_data_raises_value_error_not_type_error(
+        self, tmp_path: Path
+    ) -> None:
+        """NULL data column must produce ValueError with row context."""
+        db_path = tmp_path / "null_blob.db"
+        conn = sqlite3.connect(str(db_path))
+        conn.execute("CREATE TABLE traces (data TEXT)")
+        conn.execute(
+            "INSERT INTO traces (data) VALUES (NULL)"
+        )
+        conn.commit()
+        conn.close()
+
+        with pytest.raises(ValueError, match=r"row\s+1"):
+            TraceIngester().load_sqlite(db_path)
