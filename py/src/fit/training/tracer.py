@@ -197,10 +197,25 @@ class TraceIngester:
         paths: list[str | Path],
         fmt: str = "auto",
     ) -> TraceIngester:
-        """Auto-detect format and batch-load from multiple paths."""
+        """Auto-detect format and batch-load from multiple paths.
+
+        For directories in auto mode, all supported formats are loaded
+        (YAML, JSONL/NDJSON, JSON) so mixed-format directories work.
+        """
         for p in paths:
             p = Path(p)
             if not p.exists():
+                continue
+
+            # Directories in auto mode: load all supported formats
+            if p.is_dir() and fmt == "auto":
+                self.load_yaml_dir(p)
+                for jsonl_path in sorted(p.rglob("*.jsonl")):
+                    self.load_jsonl(jsonl_path)
+                for jsonl_path in sorted(p.rglob("*.ndjson")):
+                    self.load_jsonl(jsonl_path)
+                for json_path in sorted(p.rglob("*.json")):
+                    self.load_batch([json_path], fmt="json")
                 continue
 
             detected = fmt

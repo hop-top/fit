@@ -1603,10 +1603,6 @@ class TestDetectFormatMixedDirectoryRegression:
     not just the first one detected by _detect_format.
     """
 
-    @pytest.mark.xfail(
-        strict=True,
-        reason="directory with mixed formats only loads YAML, skips JSONL",
-    )
     def test_mixed_yaml_and_jsonl_directory(self, tmp_path: Path) -> None:
         """Directory with both .yaml and .jsonl files must load all traces."""
         import yaml as _yaml
