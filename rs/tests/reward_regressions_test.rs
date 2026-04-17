@@ -1,4 +1,4 @@
-use fit::{CompositeScorer, DimensionScorer, FitError, Reward, RewardScorer};
+use hop_top_fit::{CompositeScorer, DimensionScorer, FitError, Reward, RewardScorer};
 use std::collections::BTreeMap;
 
 /// Stub scorer that always returns a null (failure) score.

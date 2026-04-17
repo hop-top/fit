@@ -137,7 +137,7 @@ class TestDatasetBuilder:
             _record(id="b", session_id="sess1"),
         ]
         ds = DatasetBuilder(records).build(group_by_session=True)
-        ids = [e.metadata.get("domain") for e in ds]  # just check ordering
+        _ = [e.metadata.get("domain") for e in ds]  # just check ordering
         # Should be sorted by session_id
         sessions = [e.session_id for e in ds]
         assert sessions == sorted(sessions)

@@ -1,7 +1,7 @@
 use std::fs;
 use std::path::PathBuf;
 
-use fit::{Advice, Reward, Trace};
+use hop_top_fit::{Advice, Reward, Trace};
 
 fn fixtures_dir() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))

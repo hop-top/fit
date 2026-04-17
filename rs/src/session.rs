@@ -125,16 +125,16 @@ where
 
     /// Validate a state transition.
     fn validate_transition(&self, to: &SessionState) -> Result<(), FitError> {
-        let valid = match (&self.state, to) {
-            (SessionState::Init, SessionState::Advise) => true,
-            (SessionState::Init, SessionState::Done) => true,
-            (SessionState::Advise, SessionState::Frontier) => true,
-            (SessionState::Frontier, SessionState::Score) => true,
-            (SessionState::Score, SessionState::Trace) => true,
-            (SessionState::Trace, SessionState::Advise) => true,
-            (SessionState::Trace, SessionState::Done) => true,
-            _ => false,
-        };
+        let valid = matches!(
+            (&self.state, to),
+            (SessionState::Init, SessionState::Advise)
+                | (SessionState::Init, SessionState::Done)
+                | (SessionState::Advise, SessionState::Frontier)
+                | (SessionState::Frontier, SessionState::Score)
+                | (SessionState::Score, SessionState::Trace)
+                | (SessionState::Trace, SessionState::Advise)
+                | (SessionState::Trace, SessionState::Done)
+        );
 
         if !valid {
             return Err(FitError::InvalidTransition {
@@ -276,7 +276,7 @@ where
         // All subsequent state changes use transition().
         self.state = SessionState::Init;
         let mut results = vec![];
-        let mut current_prompt = prompt.to_string();
+        let current_prompt = prompt.to_string();
 
         if self.config.max_steps == 0 {
             self.transition(SessionState::Done)?;
@@ -296,7 +296,7 @@ where
             let result = self
                 .run_with_session_id(&current_prompt, context.clone(), &session_id)
                 .await?;
-            let done = result.reward.score.map_or(false, |s| s >= self.config.reward_threshold)
+            let done = result.reward.score.is_some_and(|s| s >= self.config.reward_threshold)
                 || self.step >= self.config.max_steps;
 
             results.push(result);

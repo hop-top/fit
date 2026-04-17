@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use fit::{
+use hop_top_fit::{
     Adapter, Advice, FitError, Reward, RewardScorer, Session, SessionState,
 };
 use async_trait::async_trait;
@@ -48,7 +48,7 @@ impl RewardScorer for FixedScorer {
 /// run_multi_turn() already does.
 #[tokio::test]
 async fn test_run_twice_resets_state() {
-    let advisor = fit::StubAdvisor::new("stub");
+    let advisor = hop_top_fit::StubAdvisor::new("stub");
     let adapter = EchoAdapter;
     let scorer = FixedScorer(0.8);
 

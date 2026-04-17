@@ -34,7 +34,7 @@ jobs:
             php-version: "8.3"
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Install Task
         uses: arduino/setup-task@v2
@@ -44,7 +44,7 @@ jobs:
       # --- Go ---
       - name: Setup Go
         if: matrix.language == 'go'
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           go-version: ${{ matrix.go-version }}
           cache-dependency-path: go/go.sum
@@ -59,7 +59,7 @@ jobs:
       # --- TypeScript ---
       - name: Setup Node
         if: matrix.language == 'ts'
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: ${{ matrix.node-version }}
 
@@ -79,7 +79,7 @@ jobs:
       # --- Python ---
       - name: Setup Python
         if: matrix.language == 'py'
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python-version }}
 

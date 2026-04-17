@@ -231,7 +231,6 @@ def test_trace_null_score_yaml_roundtrip():
     PR#15: null score must be parseable after YAML serialization.
     """
     import tempfile
-    from pathlib import Path
 
     from fit.trace import TraceWriter, TraceReader
 

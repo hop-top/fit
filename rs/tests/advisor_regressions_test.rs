@@ -1,4 +1,4 @@
-use fit::RemoteAdvisor;
+use hop_top_fit::RemoteAdvisor;
 
 /// PR#12 regression: RemoteAdvisor::new must not silently drop the
 /// timeout by falling back to a default client.

@@ -85,7 +85,6 @@ class TestGRPOTrainer:
         assert trainer._shape_reward(0.7) == 0.7
 
     def test_reward_shaping_exponential(self) -> None:
-        import math
 
         trainer = GRPOTrainer(GRPOConfig(reward_shaping="exponential"))
         shaped = trainer._shape_reward(1.0)
@@ -189,7 +188,7 @@ class TestRewardFnIndexingRegression:
     def test_dead_code_bounds_check(self) -> None:
         """j is always < len(completions) — the guard `if j < len(completions)`
         never triggers. Verify simplified version (no guard) is equivalent."""
-        examples = ["ex0", "ex1"]
+        _examples = ["ex0", "ex1"]
         completions = ["c0", "c1", "c2"]
 
         # j = range(len(completions)) so j is always 0..len-1
@@ -325,7 +324,7 @@ class TestTrainSimplifiedDocstringAccuracyRegression:
             if len(parts) >= 3:
                 body = '"""'.join(parts[2:])  # everything after closing """
 
-        body_lower = body.lower()
+        _body_lower = body.lower()
 
         # If docstring mentions beta, body must reference cfg.beta
         if "beta" in docstring_lower:
@@ -355,7 +354,6 @@ class TestRewardFnIgnoredInSimplifiedRegression:
     def test_warning_logged_when_reward_fn_ignored(self) -> None:
         """Simplified mode must log a warning when reward_fn is provided."""
         import inspect
-        from unittest.mock import MagicMock
 
         # Read source before any patching to avoid MagicMock interference
         from fit.training.grpo import GRPOTrainer
@@ -389,7 +387,6 @@ class TestEpochLossesMisleadingRegression:
         """training_metadata must use 'batch_losses' (not 'epoch_losses')
         and contain ALL per-batch loss values."""
         import inspect
-        import re
 
         from fit.training.grpo import GRPOTrainer
 

@@ -1,9 +1,16 @@
+import importlib
+
+import pytest
+
 from fit.session import Session, SessionConfig
 from fit.advisor import RemoteAdvisor
 from fit.reward import CompositeScorer
 from fit.adapters.openai import OpenAIAdapter
 
+_has_openai = importlib.util.find_spec("openai") is not None
 
+
+@pytest.mark.skipif(not _has_openai, reason="openai not installed")
 def test_session_one_shot():
     advisor = RemoteAdvisor(endpoint="http://localhost:9999")
     scorer = CompositeScorer.composite(["accuracy", "relevance"])
