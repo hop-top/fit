@@ -214,6 +214,7 @@ class GRPOTrainer:
         tokenizer = AutoTokenizer.from_pretrained(cfg.base_model)
         if tokenizer.pad_token is None:
             tokenizer.pad_token = tokenizer.eos_token
+        model.train()
 
         self._model = model
         self._tokenizer = tokenizer

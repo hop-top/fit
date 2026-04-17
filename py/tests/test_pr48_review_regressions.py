@@ -28,10 +28,6 @@ class TestTrainSimplifiedMissingModelTrainRegression:
     layers are inactive during training.
     """
 
-    @pytest.mark.xfail(
-        strict=True,
-        reason="model.train() is never called after from_pretrained",
-    )
     def test_model_train_called_after_from_pretrained(self) -> None:
         """Source of ``_train_simplified`` must contain ``model.train()``
         between ``from_pretrained`` and the optimization loop."""
@@ -66,10 +62,6 @@ class TestSqliteFallbackSilentJsonErrorRegression:
     TraceRecords with empty default values and no error signal.
     """
 
-    @pytest.mark.xfail(
-        strict=True,
-        reason="corrupt JSON in fallback columns is silently swallowed",
-    )
     def test_corrupt_json_in_fallback_column_signals_error(
         self, tmp_path: Path
     ) -> None:
@@ -123,10 +115,6 @@ class TestServeAdvisorJsonConfigErrorWrappingRegression:
     a raw ``json.JSONDecodeError`` without file-path context.
     """
 
-    @pytest.mark.xfail(
-        strict=True,
-        reason="JSON config errors are not wrapped with file path context",
-    )
     def test_invalid_json_config_raises_valueerror_with_path(
         self, tmp_path: Path
     ) -> None:
@@ -165,10 +153,6 @@ class TestTrainAdvisorRelativePathResolutionRegression:
     working directory (``Path.cwd()``).
     """
 
-    @pytest.mark.xfail(
-        strict=True,
-        reason="relative paths resolve against script dir, not cwd",
-    )
     def test_no_path_file_in_trace_resolution(self) -> None:
         """The source of ``main`` must not use ``Path(__file__)`` for
         resolving the traces path. Currently it does."""

@@ -182,8 +182,11 @@ class TraceIngester:
                     if isinstance(val, str):
                         try:
                             raw[key] = json.loads(val)
-                        except (json.JSONDecodeError, ValueError):
-                            pass
+                        except (json.JSONDecodeError, ValueError) as exc:
+                            raise ValueError(
+                                f"Invalid JSON in column {key!r} of "
+                                f"SQLite table {table!r} from {path}: {exc}"
+                            ) from exc
                 self._records.append(_parse_raw(raw))
         finally:
             conn.close()

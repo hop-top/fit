@@ -54,7 +54,12 @@ class FileAdvisor(Advisor):
         for name in ("advisor.json", "config.json"):
             candidate = path / name
             if candidate.is_file():
-                return json.loads(candidate.read_text(encoding="utf-8"))
+                try:
+                    return json.loads(candidate.read_text(encoding="utf-8"))
+                except json.JSONDecodeError as exc:
+                    raise ValueError(
+                        f"Invalid JSON in {candidate}: {exc}"
+                    ) from exc
 
         for name in ("config.yaml", "advisor.yaml"):
             candidate = path / name

@@ -81,11 +81,8 @@ def parse_args() -> argparse.Namespace:
 def main() -> None:
     args = parse_args()
 
-    # Resolve trace path
-    traces_path = Path(args.traces)
-    if not traces_path.is_absolute():
-        traces_path = Path(__file__).resolve().parent / traces_path
-    traces_path = traces_path.resolve()
+    # Resolve trace path relative to cwd (standard CLI behavior)
+    traces_path = Path(args.traces).resolve()
 
     if not traces_path.exists():
         logger.error("Trace path not found: %s", traces_path)
