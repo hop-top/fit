@@ -11,7 +11,14 @@ import (
 	"hop.top/fit"
 	"hop.top/kit/cli"
 	"hop.top/kit/log"
+	"hop.top/kit/output"
 )
+
+// traceRow is a trace session listing for structured output.
+type traceRow struct {
+	Session string `json:"session" yaml:"session" table:"Session"`
+	Steps   string `json:"steps" yaml:"steps" table:"Steps"`
+}
 
 func traceCmd(root *cli.Root) *cobra.Command {
 	cmd := &cobra.Command{
@@ -40,6 +47,7 @@ func traceListCmd(root *cli.Root) *cobra.Command {
 		Short: "List trace sessions",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			format := root.Viper.GetString("format")
 			entries, err := os.ReadDir(tracesDir)
 			if err != nil {
 				if os.IsNotExist(err) {
@@ -49,21 +57,24 @@ func traceListCmd(root *cli.Root) *cobra.Command {
 				return err
 			}
 
+			var rows []traceRow
 			for _, e := range entries {
 				if !e.IsDir() {
 					continue
 				}
-				// Count steps in this session
 				steps, err := os.ReadDir(filepath.Join(tracesDir, e.Name()))
 				if err != nil {
 					logger.Warn("cannot read session", "session", e.Name(), "err", err)
-					fmt.Fprintf(cmd.OutOrStdout(), "%s  (steps: ?)\n", e.Name())
+					rows = append(rows, traceRow{Session: e.Name(), Steps: "?"})
 					continue
 				}
-				fmt.Fprintf(cmd.OutOrStdout(), "%s  (%d steps)\n", e.Name(), len(steps))
+				rows = append(rows, traceRow{
+					Session: e.Name(),
+					Steps:   fmt.Sprintf("%d", len(steps)),
+				})
 			}
 
-			return nil
+			return output.Render(cmd.OutOrStdout(), format, rows)
 		},
 	}
 

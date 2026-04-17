@@ -10,9 +10,23 @@ import (
 	"github.com/spf13/cobra"
 	"hop.top/fit"
 	"hop.top/kit/cli"
+	"hop.top/kit/output"
 )
 
-func evalCmd(_ *cli.Root) *cobra.Command {
+// evalRow is a single evaluation result for structured output.
+type evalRow struct {
+	Score  float64 `json:"score" yaml:"score" table:"Score"`
+	Domain string  `json:"domain" yaml:"domain" table:"Domain"`
+	Prompt string  `json:"prompt" yaml:"prompt" table:"Prompt"`
+}
+
+// evalSummary is the aggregated evaluation summary.
+type evalSummary struct {
+	Cases    int     `json:"cases" yaml:"cases" table:"Cases"`
+	AvgScore float64 `json:"avg_score" yaml:"avg_score" table:"Avg Score"`
+}
+
+func evalCmd(root *cli.Root) *cobra.Command {
 	var (
 		datasetPath string
 	)
@@ -39,8 +53,9 @@ and prints scores to stdout.`,
 			scorer := &stubScorer{}
 			adapter := &evalAdapter{}
 
+			format := root.Viper.GetString("format")
 			var totalScore float64
-			var count int
+			var rows []evalRow
 
 			for _, tc := range cases {
 				session := fit.NewSession(advisor, adapter, scorer)
@@ -49,28 +64,31 @@ and prints scores to stdout.`,
 					fmt.Fprintf(cmd.OutOrStdout(), "FAIL: %s: %v\n", tc.Prompt, err)
 					continue
 				}
-				if result.Reward.Score != nil {
-					totalScore += *result.Reward.Score
-				}
-				count++
-
 				scoreVal := 0.0
 				if result.Reward.Score != nil {
 					scoreVal = *result.Reward.Score
+					totalScore += scoreVal
 				}
-				fmt.Fprintf(cmd.OutOrStdout(),
-					"score=%.2f domain=%s prompt=%q\n",
-					scoreVal,
-					result.Trace.Advice.Domain,
-					tc.Prompt,
-				)
+				rows = append(rows, evalRow{
+					Score:  scoreVal,
+					Domain: result.Trace.Advice.Domain,
+					Prompt: tc.Prompt,
+				})
 			}
 
-			if count > 0 {
-				fmt.Fprintf(cmd.OutOrStdout(),
-					"\n--- summary ---\ncases: %d  avg_score: %.3f\n",
-					count, totalScore/float64(count),
-				)
+			if err := output.Render(cmd.OutOrStdout(), format, rows); err != nil {
+				return err
+			}
+
+			if len(rows) > 0 {
+				summary := evalSummary{
+					Cases:    len(rows),
+					AvgScore: totalScore / float64(len(rows)),
+				}
+				fmt.Fprintln(cmd.OutOrStdout())
+				if err := output.Render(cmd.OutOrStdout(), format, summary); err != nil {
+					return err
+				}
 			}
 
 			return nil
