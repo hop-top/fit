@@ -225,7 +225,6 @@ class TestTraceIngestConfig:
         assert cfg.required_keys == ("input", "frontier")
         assert cfg.sqlite_data_column == "data"
         assert cfg.metadata_filters == {}
-        assert cfg.field_filters == {}
 
     def test_trace_ingest_config_frozen(self) -> None:
         import dataclasses
@@ -329,6 +328,34 @@ class TestTraceIngestConfig:
         ingester = TraceIngester(config=cfg).load_jsonl(jsonl).filter(domain="other")
         assert ingester.count() == 1
         assert ingester.to_trace_records()[0].id == "other"
+
+    def test_trace_ingest_config_sqlite_column_injection(self, tmp_path: Path) -> None:
+        from fit.training.tracer import TraceIngestConfig
+
+        cfg = TraceIngestConfig(sqlite_data_column="data; DROP TABLE traces")
+        db_path = tmp_path / "traces.db"
+        conn = sqlite3.connect(str(db_path))
+        conn.execute("CREATE TABLE traces (data TEXT)")
+        conn.commit()
+        conn.close()
+
+        with pytest.raises(ValueError, match="Invalid"):
+            TraceIngester(config=cfg).load_sqlite(db_path)
+
+    def test_trace_ingest_config_metadata_filters_immutable(self) -> None:
+        from fit.training.tracer import TraceIngestConfig
+
+        cfg = TraceIngestConfig(metadata_filters={"domain": "x"})
+        with pytest.raises(TypeError):
+            cfg.metadata_filters["domain"] = "y"
+
+    def test_trace_ingest_config_no_field_filters_attr(self) -> None:
+        import dataclasses
+
+        from fit.training.tracer import TraceIngestConfig
+
+        field_names = [f.name for f in dataclasses.fields(TraceIngestConfig())]
+        assert "field_filters" not in field_names
 
     def test_trace_ingest_config_sqlite_data_column(self, tmp_path: Path) -> None:
         from fit.training.tracer import TraceIngestConfig

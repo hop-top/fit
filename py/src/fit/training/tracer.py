@@ -4,6 +4,7 @@ from __future__ import annotations
 import json
 import re
 import sqlite3
+import types
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
@@ -81,13 +82,22 @@ class TraceIngestConfig:
     """Configuration for TraceIngester ingestion behavior.
 
     Defaults match current hardcoded behavior exactly.
+
+    ``required_keys`` uses **any-of** semantics: a trace is eligible
+    if it contains *at least one* of the listed keys, not all of them.
     """
 
     yaml_glob: str = "*.y*ml"
     required_keys: tuple[str, ...] = ("input", "frontier")
     sqlite_data_column: str = "data"
     metadata_filters: dict[str, Any] = field(default_factory=dict)
-    field_filters: dict[str, Any] = field(default_factory=dict)
+
+    def __post_init__(self) -> None:
+        object.__setattr__(
+            self,
+            "metadata_filters",
+            types.MappingProxyType(self.metadata_filters),
+        )
 
 
 class TraceIngester:
@@ -126,9 +136,11 @@ class TraceIngester:
     def load_yaml_dir(self, path: str | Path) -> TraceIngester:
         """Load trace YAML files from a directory tree.
 
-        Scans recursively for ``*.yaml`` / ``*.yml`` files and ingests
-        any dict containing ``input`` or ``frontier`` keys. Non-trace
-        YAML (configs, schemas) is skipped automatically.
+        Scans recursively using the glob pattern from
+        ``self._config.yaml_glob`` (default ``*.y*ml``) and ingests
+        any dict containing at least one of
+        ``self._config.required_keys`` (default ``("input", "frontier")``).
+        Non-trace YAML (configs, schemas) is skipped automatically.
         """
         path = Path(path)
         if not path.is_dir():
@@ -158,12 +170,17 @@ class TraceIngester:
     def load_sqlite(self, path: str | Path, table: str = "traces") -> TraceIngester:
         """Load traces from a SQLite database table.
 
-        Tries JSON blob column (``data``) first. Falls back to individual
-        columns matching the trace schema (``input``, ``advice``,
-        ``frontier``, ``reward``, ``metadata`` as JSON text).
+        Tries the JSON blob column named by
+        ``self._config.sqlite_data_column`` (default ``"data"``) first.
+        Falls back to individual columns matching the trace schema
+        (``input``, ``advice``, ``frontier``, ``reward``, ``metadata``
+        as JSON text).
         """
         if not table or not _VALID_TABLE_RE.match(table):
             raise ValueError(f"Invalid table name: {table!r}")
+        col = self._config.sqlite_data_column
+        if not col or not _VALID_TABLE_RE.match(col):
+            raise ValueError(f"Invalid column name: {col!r}")
         path = Path(path)
         if not path.exists():
             raise FileNotFoundError(f"SQLite file not found: {path}")
@@ -174,7 +191,6 @@ class TraceIngester:
             conn.row_factory = sqlite3.Row
             # Try JSON blob column first
             try:
-                col = self._config.sqlite_data_column
                 cursor = conn.execute(f"SELECT {col} FROM {table}")
                 for row_index, row in enumerate(cursor, start=1):
                     try:
