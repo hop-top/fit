@@ -121,7 +121,12 @@ class TraceIngester:
 
         for yaml_file in sorted(path.rglob("*.y*ml")):
             with yaml_file.open("r", encoding="utf-8") as f:
-                raw = yaml.safe_load(f)
+                try:
+                    raw = yaml.safe_load(f)
+                except yaml.YAMLError as exc:
+                    raise ValueError(
+                        f"Invalid YAML in {yaml_file}: {exc}"
+                    ) from exc
             if isinstance(raw, dict) and ("input" in raw or "frontier" in raw):
                 self._records.append(_parse_raw(raw))
         return self
@@ -129,7 +134,9 @@ class TraceIngester:
     def load_sqlite(self, path: str | Path, table: str = "traces") -> TraceIngester:
         """Load traces from a SQLite database table.
 
-        Expected columns: data (JSON text) or individual trace fields.
+        Tries JSON blob column (``data``) first. Falls back to individual
+        columns matching the trace schema (``input``, ``advice``,
+        ``frontier``, ``reward``, ``metadata`` as JSON text).
         """
         if not table or not _VALID_TABLE_RE.match(table):
             raise ValueError(f"Invalid table name: {table!r}")
@@ -169,6 +176,14 @@ class TraceIngester:
 
             for row in conn.execute(f"SELECT * FROM {table}"):
                 raw = dict(zip(cols, row))
+                # Decode JSON text columns into dicts
+                for key in ("input", "advice", "frontier", "reward", "metadata"):
+                    val = raw.get(key)
+                    if isinstance(val, str):
+                        try:
+                            raw[key] = json.loads(val)
+                        except (json.JSONDecodeError, ValueError):
+                            pass
                 self._records.append(_parse_raw(raw))
         finally:
             conn.close()
@@ -177,7 +192,7 @@ class TraceIngester:
     def load_batch(
         self,
         paths: list[str | Path],
-        format: str = "auto",
+        fmt: str = "auto",
     ) -> TraceIngester:
         """Auto-detect format and batch-load from multiple paths."""
         for p in paths:
@@ -185,13 +200,13 @@ class TraceIngester:
             if not p.exists():
                 continue
 
-            fmt = format
-            if fmt == "auto":
-                fmt = _detect_format(p)
+            detected = fmt
+            if detected == "auto":
+                detected = _detect_format(p)
 
-            if fmt == "jsonl":
+            if detected == "jsonl":
                 self.load_jsonl(p)
-            elif fmt == "yaml":
+            elif detected == "yaml":
                 if p.is_dir():
                     self.load_yaml_dir(p)
                 else:
@@ -206,9 +221,9 @@ class TraceIngester:
                                 "input" in item or "frontier" in item
                             ):
                                 self._records.append(_parse_raw(item))
-            elif fmt == "sqlite":
+            elif detected == "sqlite":
                 self.load_sqlite(p)
-            elif fmt == "json":
+            elif detected == "json":
                 with p.open("r", encoding="utf-8") as f:
                     raw = json.load(f)
                 if isinstance(raw, list):

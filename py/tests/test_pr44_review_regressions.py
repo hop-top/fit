@@ -77,13 +77,6 @@ class TestYamlSafeLoadMissingYAMLErrorCatch:
     Actual:   raw ``yaml.YAMLError``.
     """
 
-    @pytest.mark.xfail(
-        strict=True,
-        reason=(
-            "yaml.safe_load raises raw YAMLError; "
-            "should be caught and re-raised as ValueError with path"
-        ),
-    )
     def test_malformed_yaml_raises_value_error_with_path(
         self, tmp_path: Path
     ) -> None:
@@ -218,13 +211,6 @@ class TestLoadSqliteFallbackBranch:
     discarded.
     """
 
-    @pytest.mark.xfail(
-        strict=True,
-        reason=(
-            "Fallback branch passes JSON strings to _parse_raw; "
-            "isinstance check discards them, producing empty records"
-        ),
-    )
     def test_nested_json_columns_produce_populated_records(
         self, tmp_path: Path
     ) -> None:
@@ -302,8 +288,8 @@ class TestLoadSqliteFallbackBranch:
     @pytest.mark.xfail(
         strict=True,
         reason=(
-            "Fallback branch with truly flat columns produces empty "
-            "records; _parse_raw cannot map flat keys to nested schema"
+            "Truly flat columns (prompt, output, score) are not "
+            "mapped to nested TraceRecord schema — known limitation"
         ),
     )
     def test_truly_flat_columns_produce_populated_records(
@@ -433,10 +419,6 @@ class TestFormatParameterShadowsBuiltin:
     Actual:   parameter named ``format``.
     """
 
-    @pytest.mark.xfail(
-        strict=True,
-        reason="load_batch parameter is named 'format', shadowing the built-in",
-    )
     def test_load_batch_does_not_shadow_format_builtin(self) -> None:
         """The second parameter of load_batch should not be named 'format'."""
         sig = inspect.signature(TraceIngester.load_batch)
