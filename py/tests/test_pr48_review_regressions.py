@@ -89,7 +89,7 @@ class TestSqliteFallbackSilentJsonErrorRegression:
             # Acceptable: raising with context about the corrupt data
             return
 
-        records = ingester.records
+        records = ingester.to_trace_records()
         assert len(records) == 1, "Expected exactly one record"
         record = records[0]
         # If it didn't raise, the record's prompt (from input.prompt) must
