@@ -133,11 +133,12 @@ class TestLoadSqlite:
 
 
 class TestLoadYamlDirFiltersNonTraceRegressions:
-    """Regression: load_yaml_dir must only ingest step-NNN trace files.
+    """Regression: load_yaml_dir must filter YAML by trace content, not just extension.
 
-    PR #29 review item 2 — rglob('*.y*ml') picks up ALL yaml files
-    including configs/schemas. Non-trace YAML produces mostly-empty
-    TraceRecords. These tests prove the bug (they FAIL on main).
+    PR #29 review item 2 — rglob('*.y*ml') picks up ALL yaml files,
+    including configs/schemas. YAML mappings that do not look like traces
+    (for example, those missing trace fields such as ``input``/``frontier``)
+    must be skipped so they do not produce mostly-empty TraceRecords.
     """
 
     def test_mixed_dir_only_loads_traces(self, tmp_path: Path) -> None:

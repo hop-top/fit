@@ -18,10 +18,6 @@ from fit.training.tracer import TraceIngester
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="PR #36 review: JSON branch ingests non-trace dicts unconditionally",
-)
 class TestJsonBranchIngestsNonTraceDictsRegression:
     """load_batch JSON path appends every dict via _parse_raw() without
     checking for ``input`` or ``frontier`` keys. Unlike the YAML path,
@@ -72,10 +68,6 @@ class TestJsonBranchIngestsNonTraceDictsRegression:
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="PR #36 review: train_advisor globs all *.json including non-trace fixtures",
-)
 class TestTrainAdvisorGlobsNonTraceJsonRegression:
     """train_advisor.py globs ``*.json`` and feeds every match to
     ``load_batch``. Non-trace JSON files (e.g. advice-v1.json,
@@ -119,10 +111,6 @@ class TestTrainAdvisorGlobsNonTraceJsonRegression:
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="PR #36 review: docstring describes filename filtering but tests validate content filtering",
-)
 class TestLoadYamlDirDocstringAccuracyRegression:
     """``TestLoadYamlDirFiltersNonTraceRegressions`` docstring claims
     "load_yaml_dir must only ingest step-NNN trace files" but the

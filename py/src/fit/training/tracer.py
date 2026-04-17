@@ -214,9 +214,11 @@ class TraceIngester:
                                 f"a dict (JSON object), but item at index {idx} is "
                                 f"{type(item).__name__}"
                             )
-                        self._records.append(_parse_raw(item))
+                        if "input" in item or "frontier" in item:
+                            self._records.append(_parse_raw(item))
                 elif isinstance(raw, dict):
-                    self._records.append(_parse_raw(raw))
+                    if "input" in raw or "frontier" in raw:
+                        self._records.append(_parse_raw(raw))
         return self
 
     # -- filtering --
