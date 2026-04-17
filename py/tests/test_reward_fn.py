@@ -240,3 +240,41 @@ class TestPR30ParseScoreRegressions:
         """'Score: 100' -> 100/10 = 10.0; must be clamped to [0,1]."""
         score = _parse_score("Score: 100")
         assert 0.0 <= score <= 1.0, f"got {score}, outside [0.0, 1.0]"
+
+
+# ---------------------------------------------------------------------------
+# PR #49 review: UserSignalReward docstring mismatch
+# ---------------------------------------------------------------------------
+
+
+class TestPR49UserSignalRewardDocstringRegression:
+    """UserSignalReward's docstring mentions ``session_id`` and
+    ``(session_id, step)`` as the keying mechanism, but the
+    implementation actually hashes the output text with SHA-256.
+
+    The docstring must not reference a keying scheme that does not
+    match the code.
+    """
+
+    @pytest.mark.xfail(
+        strict=True,
+        reason="PR #49 review: docstring mentions session_id but impl uses output hashing",
+    )
+    def test_docstring_does_not_mention_session_id(self) -> None:
+        """UserSignalReward.__doc__ must not reference 'session_id'."""
+        doc = UserSignalReward.__doc__ or ""
+        assert "session_id" not in doc, (
+            "Docstring still mentions 'session_id'; impl uses output text hashing"
+        )
+
+    @pytest.mark.xfail(
+        strict=True,
+        reason="PR #49 review: docstring mentions (session_id, step) but impl uses output hashing",
+    )
+    def test_docstring_does_not_mention_session_step_tuple(self) -> None:
+        """UserSignalReward.__doc__ must not reference '(session_id, step)'."""
+        doc = UserSignalReward.__doc__ or ""
+        assert "(session_id, step)" not in doc, (
+            "Docstring still mentions '(session_id, step)'; "
+            "impl uses SHA-256 of output text"
+        )

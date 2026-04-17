@@ -197,3 +197,40 @@ class TestServeAdvisorEmptyYamlConfig:
                 f"Bug confirmed: empty YAML config causes {exc}. "
                 "normalize yaml.safe_load result to {} when None."
             )
+
+
+# ---------------------------------------------------------------------------
+# Bug 5 (PR #49): serve_advisor JSON config returns unvalidated type
+# File: serve_advisor.py — _load_config / FileAdvisor.__init__
+# ---------------------------------------------------------------------------
+
+
+class TestServeAdvisorJsonArrayConfigRegression:
+    """JSON config containing a non-dict type (e.g. ``[1,2,3]``) is loaded
+    without type validation.  ``FileAdvisor`` then calls ``.get()`` on the
+    result, which crashes with ``AttributeError`` because lists have no
+    ``.get`` method.
+
+    Expected: either normalise to ``{}`` (domain == "general") or raise
+    ``ValueError``.
+    """
+
+    @pytest.mark.xfail(
+        strict=True,
+        reason="PR #49 review: JSON array config crashes with AttributeError on .get()",
+    )
+    def test_json_array_config_does_not_crash(self, tmp_path: Path) -> None:
+        """advisor.json with ``[1,2,3]`` must not raise AttributeError."""
+        import json
+
+        from examples.serve_advisor import FileAdvisor
+
+        model_dir = tmp_path / "advisor"
+        model_dir.mkdir()
+        (model_dir / "advisor.json").write_text(
+            json.dumps([1, 2, 3]), encoding="utf-8"
+        )
+
+        advisor = FileAdvisor(str(model_dir))
+        # If it normalises to {}, domain should default to "general"
+        assert advisor._domain == "general"

@@ -226,3 +226,26 @@ class TestPR33SplitValRatioValidationRegression:
         ]
         with pytest.raises(ValueError, match="val_ratio"):
             FitDataset(examples).split(val_ratio=1.5)
+
+
+class TestPR49SplitValRatioOneRegression:
+    """Regression: FitDataset.split(val_ratio=1.0) is allowed but silently
+    clamped, producing an empty training set.
+
+    PR #49 review — val_ratio=1.0 means "put everything in validation,
+    nothing in train", which is never useful and likely a caller mistake.
+    split() should raise ValueError for val_ratio >= 1.0 (exclusive upper
+    bound).  Currently the value is silently accepted and clamped.
+    """
+
+    @pytest.mark.xfail(
+        strict=True,
+        reason="PR #49 review: val_ratio=1.0 silently clamped instead of rejected",
+    )
+    def test_val_ratio_one_raises_value_error(self) -> None:
+        """split(val_ratio=1.0) must raise ValueError."""
+        examples = [
+            TrainingExample(f"ctx{i}", f"adv{i}", 0.5) for i in range(5)
+        ]
+        with pytest.raises(ValueError, match="val_ratio"):
+            FitDataset(examples).split(val_ratio=1.0)
