@@ -56,11 +56,22 @@ class TestRubricJudgeReward:
 
 
 class TestLLMJudgeReward:
-    def test_fallback_on_missing_adapter(self) -> None:
+    def test_fallback_on_missing_adapter(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        import fit.adapters.anthropic as anthropic_mod
+
+        class MissingAnthropicAdapter:
+            def __init__(self, *args: object, **kwargs: object) -> None:
+                raise ImportError("anthropic adapter unavailable")
+
+        monkeypatch.setattr(
+            anthropic_mod, "AnthropicAdapter", MissingAnthropicAdapter
+        )
+
         fn = LLMJudgeReward()
-        # Should not raise, returns fallback score
         score = fn("ctx", "adv", "out")
-        assert 0.0 <= score <= 1.0
+        assert score == pytest.approx(0.5)
 
 
 class TestUserSignalReward:

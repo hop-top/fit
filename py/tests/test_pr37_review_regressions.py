@@ -23,13 +23,6 @@ class TestLLMJudgeRewardEnvironmentDependentRegression:
     API key. The test must use ``monkeypatch`` to be deterministic.
     """
 
-    @pytest.mark.xfail(
-        strict=True,
-        reason=(
-            "PR #37 review: LLMJudgeReward test is environment-dependent,"
-            " no monkeypatch"
-        ),
-    )
     def test_fallback_test_uses_monkeypatch(self) -> None:
         """The method signature of ``test_fallback_on_missing_adapter``
         must include a ``monkeypatch`` parameter, proving the adapter
