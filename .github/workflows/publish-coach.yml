@@ -153,9 +153,10 @@ jobs:
           PACKAGIST_TOKEN: ${{ secrets.PACKAGIST_TOKEN }}
         run: |
           if [ -n "$PACKAGIST_TOKEN" ]; then
-            curl -s -X POST \
-              "https://packagist.org/api/update-package?username=hop-top&apiToken=${PACKAGIST_TOKEN}" \
-              -d '{"repository":{"url":"https://github.com/hop-top/fit"}}'
+            curl -s --fail-with-body -X POST \
+              "https://packagist.org/api/update-package" \
+              -H "Content-Type: application/json" \
+              -d "{\"username\":\"hop-top\",\"apiToken\":\"${PACKAGIST_TOKEN}\",\"repository\":{\"url\":\"https://github.com/hop-top/fit\"}}"
           else
             echo "::notice::PACKAGIST_TOKEN not set; relying on webhook"
           fi

@@ -81,7 +81,7 @@ jobs:
       - name: Install and audit
         working-directory: ts
         run: |
-          pnpm install --ignore-workspace
+          pnpm install --frozen-lockfile --ignore-workspace
           pnpm audit --prod
 
   composer-audit:
