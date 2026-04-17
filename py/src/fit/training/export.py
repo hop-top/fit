@@ -25,17 +25,10 @@ class ModelExporter:
 
     def to_safetensors(self, output_dir: str) -> Path:
         """Export model weights as safetensors format."""
-        try:
-            from safetensors.torch import save_file  # type: ignore[import-untyped]
-        except ImportError:
-            raise ImportError(
-                "safetensors not installed. Install with: pip install safetensors"
-            )
-
         out = Path(output_dir)
         out.mkdir(parents=True, exist_ok=True)
 
-        # Load model weights if available
+        # Copy-only path — no safetensors dep needed
         model_file = self._model_path / "model.safetensors"
         if model_file.exists():
             shutil.copy2(model_file, out / "model.safetensors")
@@ -43,6 +36,13 @@ class ModelExporter:
             # Try converting from pytorch bin
             bin_file = self._model_path / "pytorch_model.bin"
             if bin_file.exists():
+                try:
+                    from safetensors.torch import save_file  # type: ignore[import-untyped]
+                except ImportError:
+                    raise ImportError(
+                        "safetensors not installed. "
+                        "Install with: pip install safetensors"
+                    )
                 try:
                     import torch  # noqa: F401
                 except ImportError as exc:
