@@ -144,7 +144,8 @@ class TraceIngester:
         if not path.exists():
             raise FileNotFoundError(f"SQLite file not found: {path}")
 
-        conn = sqlite3.connect(f"file:{path}?mode=ro", uri=True)
+        db_uri = f"{path.resolve().as_uri()}?mode=ro"
+        conn = sqlite3.connect(db_uri, uri=True)
         try:
             conn.row_factory = sqlite3.Row
             # Try JSON blob column first

@@ -128,7 +128,10 @@ class ModelExporter:
 
         model = ORTModelForCausalLM.from_pretrained(str(self._model_path))
         model.save_pretrained(str(out.parent))
-        return out.parent / "model.onnx"
+        exported = out.parent / "model.onnx"
+        if exported != out and exported.exists():
+            exported.rename(out)
+        return out
 
     def _onnx_export_torch(self, output_path: Path) -> Path:
         """Fallback ONNX export using torch.onnx.export."""
