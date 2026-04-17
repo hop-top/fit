@@ -147,3 +147,57 @@ class TestFileAdvisorMalformedJson:
 
         with pytest.raises(ValueError, match=str(bad_json)):
             FileAdvisor(model_dir)
+
+
+# -------------------------------------------------------------------
+# Regression: non-dict JSON body crashes handler (PR #55)
+# -------------------------------------------------------------------
+
+
+class TestServeAdvisorNonDictBodyRegression:
+    """``_read_body()`` returns whatever ``json.loads`` produces.
+
+    A valid JSON array (``[1,2,3]``), string, or number passes
+    through to ``generate_advice(ctx)`` which calls ``ctx.get(...)``
+    — crashes with ``AttributeError`` because lists/ints have no
+    ``.get()``.  The handler must validate ``ctx`` is a dict before
+    proceeding.
+    """
+
+    def test_non_dict_json_body_returns_400(self) -> None:
+        """do_POST must guard against non-dict JSON bodies.
+
+        Inspect the source of do_POST for an ``isinstance(ctx, dict)``
+        check (or equivalent) between ``_read_body()`` and
+        ``generate_advice(ctx)``.  Currently missing — this test
+        fails until the validation is added.
+        """
+        import inspect
+
+        from examples.serve_advisor import _build_app
+
+        source = inspect.getsource(_build_app)
+
+        # Locate the do_POST method body
+        post_start = source.find("def do_POST")
+        assert post_start != -1, "do_POST not found in _build_app"
+        post_body = source[post_start:]
+
+        # Between _read_body() and generate_advice() there must be
+        # a dict type check so non-dict payloads get a 400.
+        read_idx = post_body.find("_read_body()")
+        advice_idx = post_body.find("generate_advice(")
+        assert read_idx != -1 and advice_idx != -1, (
+            "Expected _read_body and generate_advice in do_POST"
+        )
+
+        between = post_body[read_idx:advice_idx]
+        has_dict_check = (
+            "isinstance" in between and "dict" in between
+        ) or "not isinstance" in between
+
+        assert has_dict_check, (
+            "do_POST passes _read_body() result straight to "
+            "generate_advice() with no dict type check — a JSON "
+            "array or scalar crashes with AttributeError"
+        )

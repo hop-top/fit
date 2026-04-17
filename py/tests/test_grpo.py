@@ -612,3 +612,45 @@ class TestTrainDoesNotDoubleSave:
             "trainer.save() is called after trainer.train() "
             "which already saves internally — duplicate disk I/O"
         )
+
+
+# -------------------------------------------------------------------
+# Regression: save() silently swallows exceptions (PR #55)
+# -------------------------------------------------------------------
+
+
+class TestSaveSilentExceptionRegression:
+    """save() wraps save_pretrained in ``except Exception: pass``.
+
+    Real errors (permission, serialization, disk-full) vanish —
+    caller believes model was persisted when it was not. At minimum
+    the error must be logged.
+    """
+
+    def test_save_swallows_exception_silently(
+        self, tmp_path, caplog,
+    ) -> None:
+        """Model save_pretrained raises OSError — must be logged."""
+        import logging
+        from unittest.mock import MagicMock
+
+        trainer = GRPOTrainer(GRPOConfig())
+        mock_model = MagicMock()
+        mock_model.save_pretrained.side_effect = OSError(
+            "Permission denied"
+        )
+        trainer._model = mock_model
+
+        with caplog.at_level(logging.WARNING):
+            trainer.save(str(tmp_path / "out"))
+
+        # The model's save_pretrained was called and raised
+        mock_model.save_pretrained.assert_called_once()
+
+        # The exception MUST appear in the logs — currently it
+        # does not because the except block is a bare ``pass``.
+        logged = caplog.text.lower()
+        assert "permission denied" in logged or "error" in logged, (
+            "save() silently swallows OSError from "
+            "save_pretrained — must log the exception"
+        )
