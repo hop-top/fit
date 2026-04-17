@@ -29,13 +29,6 @@ class TestDetectFormatNonRecursiveJsonlGlob:
     Actual:   ``"yaml"`` (falls through to default).
     """
 
-    @pytest.mark.xfail(
-        strict=True,
-        reason=(
-            "tracer.py:310 uses glob() instead of rglob() for JSONL — "
-            "nested JSONL files are invisible, causing yaml default"
-        ),
-    )
     def test_nested_jsonl_detected_as_jsonl(self, tmp_path: Path) -> None:
         """Dir with JSONL only in a subdir should be detected as jsonl."""
         from fit.training.tracer import _detect_format
@@ -72,13 +65,6 @@ class TestTrainSimplifiedRedundantLabels:
     Actual:   ``model(**inputs, labels=inputs["input_ids"])``.
     """
 
-    @pytest.mark.xfail(
-        strict=True,
-        reason=(
-            "grpo.py:253 passes labels= to model forward but never uses "
-            "outputs.loss — redundant loss computation"
-        ),
-    )
     def test_no_redundant_labels_in_forward_pass(self) -> None:
         """_train_simplified should not pass labels= to the model call."""
         from fit.training.grpo import GRPOTrainer
@@ -115,13 +101,6 @@ class TestTrainAdvisorManualGlob:
     Actual:   manual ``traces_path.glob("*.jsonl")`` etc.
     """
 
-    @pytest.mark.xfail(
-        strict=True,
-        reason=(
-            "train_advisor.py:106-117 manually globs instead of "
-            "delegating to load_batch — misses .ndjson, no recursion"
-        ),
-    )
     def test_no_manual_glob_in_directory_branch(self) -> None:
         """Directory handling should delegate to load_batch, not glob."""
         from examples.train_advisor import main

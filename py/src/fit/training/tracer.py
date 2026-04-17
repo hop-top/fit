@@ -306,8 +306,8 @@ def _detect_format(path: Path) -> str:
         # Check for YAML cassettes
         if any(path.rglob("*.y*ml")):
             return "yaml"
-        # Check for JSONL files
-        if any(path.glob("*.jsonl")) or any(path.glob("*.ndjson")):
+        # Check for JSONL files recursively
+        if any(path.rglob("*.jsonl")) or any(path.rglob("*.ndjson")):
             return "jsonl"
         return "yaml"  # default for dirs
 

@@ -250,7 +250,7 @@ class GRPOTrainer:
                 )
 
                 # Forward pass
-                outputs = model(**inputs, labels=inputs["input_ids"])
+                outputs = model(**inputs)
                 logits = outputs.logits
 
                 # Compute log probs for policy gradient

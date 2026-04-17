@@ -100,21 +100,9 @@ def main() -> None:
 
     ingester = TraceIngester()
 
-    # Try JSONL first, then directory
-    if traces_path.is_file():
-        ingester.load_batch([traces_path])
-    else:
-        # Load all formats from directory
-        jsonl_files = list(traces_path.glob("*.jsonl"))
-        json_files = list(traces_path.glob("*.json"))
-        yaml_dir = traces_path if any(traces_path.rglob("*.y*ml")) else None
-
-        if jsonl_files:
-            ingester.load_batch(jsonl_files)
-        if json_files:
-            ingester.load_batch(json_files)
-        if yaml_dir:
-            ingester.load_yaml_dir(yaml_dir)
+    # Delegate file or directory handling to TraceIngester so recursive
+    # discovery and supported trace formats are processed consistently.
+    ingester.load_batch([traces_path])
 
     # Filter by domain if specified
     if args.domain:
