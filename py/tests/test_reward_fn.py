@@ -270,3 +270,35 @@ class TestPR49UserSignalRewardDocstringRegression:
             "Docstring still mentions '(session_id, step)'; "
             "impl uses SHA-256 of output text"
         )
+
+
+# ---------------------------------------------------------------------------
+# PR #50 review: UserSignalReward inline comment mismatch
+# ---------------------------------------------------------------------------
+
+
+class TestPR50UserSignalRewardInlineCommentRegression:
+    """UserSignalReward.__call__ inline comment mentions 'context key'
+    but the implementation only hashes ``output`` — no context-based
+    lookup exists.
+
+    The inline comment must not reference a lookup mechanism that is
+    not implemented.
+    """
+
+    @pytest.mark.xfail(
+        strict=True,
+        reason=(
+            "PR #50 review: inline comment mentions context key "
+            "but impl only uses output hash"
+        ),
+    )
+    def test_call_source_does_not_mention_context_key(self) -> None:
+        """UserSignalReward.__call__ source must not mention 'context key'."""
+        import inspect
+
+        source = inspect.getsource(UserSignalReward.__call__)
+        assert "context key" not in source, (
+            "Inline comment still mentions 'context key'; "
+            "impl only hashes output text"
+        )
