@@ -10,7 +10,6 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
 
-import pytest
 
 from fit.adapters import AnthropicAdapter, OllamaAdapter, OpenAIAdapter
 from fit.types import Advice

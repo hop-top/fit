@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 use std::sync::{Arc, Mutex};
 
-use fit::{
+use hop_top_fit::{
     Advisor, Adapter, Advice, FitError, Reward, RewardScorer, Session, SessionConfig,
     SessionMode,
 };
@@ -48,7 +48,7 @@ impl RewardScorer for LowScorer {
 /// session_id, violating the session protocol spec.
 #[tokio::test]
 async fn multi_turn_same_session_id() {
-    let advisor = fit::StubAdvisor::new("stub");
+    let advisor = hop_top_fit::StubAdvisor::new("stub");
     let adapter = EchoAdapter;
     let scorer = LowScorer;
 
@@ -87,7 +87,7 @@ async fn multi_turn_same_session_id() {
 /// so if a Session was reused, steps would continue from the previous count.
 #[tokio::test]
 async fn multi_turn_resets_step_counter() {
-    let advisor = fit::StubAdvisor::new("stub");
+    let advisor = hop_top_fit::StubAdvisor::new("stub");
     let adapter = EchoAdapter;
     let scorer = LowScorer;
 
@@ -131,7 +131,7 @@ async fn multi_turn_resets_step_counter() {
 /// max_steps=0, the session would produce 1 trace instead of 0.
 #[tokio::test]
 async fn multi_turn_zero_steps_returns_empty() {
-    let advisor = fit::StubAdvisor::new("stub");
+    let advisor = hop_top_fit::StubAdvisor::new("stub");
     let adapter = EchoAdapter;
     let scorer = LowScorer;
 
@@ -149,7 +149,7 @@ async fn multi_turn_zero_steps_returns_empty() {
 
     assert!(results.is_empty(), "max_steps=0 should produce no results");
     // Session should end in Done state
-    assert_eq!(*session.state(), fit::SessionState::Done);
+    assert_eq!(*session.state(), hop_top_fit::SessionState::Done);
 }
 
 /// Advisor that captures the input it receives on each call.

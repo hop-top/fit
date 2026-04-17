@@ -7,13 +7,11 @@ data.get("version", "1.0") into the Advice constructor.
 
 from __future__ import annotations
 
-from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pytest
 
 from fit.advisor import RemoteAdvisor
-from fit.types import Advice
 
 
 def _make_mock_response(json_data: dict, status_code: int = 200) -> MagicMock:
@@ -46,7 +44,6 @@ def test_version_preserved_from_server_response():
 
     with patch.object(advisor, "_endpoint", "http://localhost:9999"):
         # Patch the httpx module that generate_advice imports locally
-        import fit.advisor as advisor_mod
 
         mock_httpx = MagicMock()
         mock_httpx.post.return_value = mock_resp

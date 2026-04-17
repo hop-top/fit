@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use fit::{Advice, Reward, Trace};
+use hop_top_fit::{Advice, Reward, Trace};
 
 /// Regression: Reward breakdown must serialize keys in alphabetical order.
 ///

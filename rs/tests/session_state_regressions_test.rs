@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use fit::{
+use hop_top_fit::{
     Adapter, Advice, FitError, Reward, RewardScorer, Session, SessionConfig, SessionMode,
     SessionState,
 };
@@ -47,7 +47,7 @@ impl RewardScorer for FixedScorer {
 /// This test verifies that run() transitions Trace->Done before returning.
 #[tokio::test]
 async fn one_shot_ends_in_done_state() {
-    let advisor = fit::StubAdvisor::new("stub");
+    let advisor = hop_top_fit::StubAdvisor::new("stub");
     let adapter = EchoAdapter;
     let scorer = FixedScorer(0.8);
 
@@ -76,7 +76,7 @@ async fn one_shot_ends_in_done_state() {
 /// directly via transition().
 #[tokio::test]
 async fn multi_turn_trace_to_advise_transition() {
-    let advisor = fit::StubAdvisor::new("stub");
+    let advisor = hop_top_fit::StubAdvisor::new("stub");
     let adapter = EchoAdapter;
     let scorer = FixedScorer(0.3); // always below threshold
 
@@ -113,7 +113,7 @@ async fn multi_turn_trace_to_advise_transition() {
 /// validates Trace->Done is a legal transition.
 #[tokio::test]
 async fn multi_turn_ends_in_done_via_transition() {
-    let advisor = fit::StubAdvisor::new("stub");
+    let advisor = hop_top_fit::StubAdvisor::new("stub");
     let adapter = EchoAdapter;
     let scorer = FixedScorer(0.3);
 
@@ -148,7 +148,7 @@ async fn multi_turn_ends_in_done_via_transition() {
 /// transition(Done), so this exercises the transition machinery.
 #[tokio::test]
 async fn zero_steps_done_via_transition() {
-    let advisor = fit::StubAdvisor::new("stub");
+    let advisor = hop_top_fit::StubAdvisor::new("stub");
     let adapter = EchoAdapter;
     let scorer = FixedScorer(0.5);
 
@@ -174,7 +174,7 @@ async fn zero_steps_done_via_transition() {
 /// exit after the first step and transition Trace->Done correctly.
 #[tokio::test]
 async fn multi_turn_early_exit_done_via_transition() {
-    let advisor = fit::StubAdvisor::new("stub");
+    let advisor = hop_top_fit::StubAdvisor::new("stub");
     let adapter = EchoAdapter;
     let scorer = FixedScorer(0.95); // above threshold
 
