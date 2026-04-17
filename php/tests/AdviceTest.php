@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Hop\Fit\Tests;
+namespace HopTop\Fit\Tests;
 
-use Hop\Fit\Advice;
+use HopTop\Fit\Advice;
 use PHPUnit\Framework\TestCase;
 
 class AdviceTest extends TestCase

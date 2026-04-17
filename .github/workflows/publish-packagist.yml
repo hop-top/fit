@@ -1,0 +1,38 @@
+name: Publish Packagist
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    name: hop-top/fit -> Packagist
+    runs-on: ubuntu-latest
+    if: startsWith(github.event.release.tag_name, 'v')
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.3"
+          tools: composer:v2
+
+      - name: Validate composer.json
+        working-directory: php
+        run: composer validate --strict
+
+      - name: Ping Packagist
+        env:
+          PACKAGIST_TOKEN: ${{ secrets.PACKAGIST_TOKEN }}
+        run: |
+          if [ -n "$PACKAGIST_TOKEN" ]; then
+            curl -s --fail-with-body -X POST \
+              "https://packagist.org/api/update-package" \
+              -H "Content-Type: application/json" \
+              -d "{\"username\":\"hop-top\",\"apiToken\":\"${PACKAGIST_TOKEN}\",\"repository\":{\"url\":\"https://github.com/hop-top/fit\"}}"
+          else
+            echo "::notice::PACKAGIST_TOKEN not set; relying on webhook"
+          fi

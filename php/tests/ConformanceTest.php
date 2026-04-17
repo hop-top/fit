@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Hop\Fit\Tests;
+namespace HopTop\Fit\Tests;
 
-use Hop\Fit\Advice;
-use Hop\Fit\Reward;
-use Hop\Fit\Trace;
+use HopTop\Fit\Advice;
+use HopTop\Fit\Reward;
+use HopTop\Fit\Trace;
 use PHPUnit\Framework\TestCase;
 
 class ConformanceTest extends TestCase

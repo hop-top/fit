@@ -1,5 +1,5 @@
 {
-  "name": "hop/fit",
+  "name": "hop-top/fit",
   "description": "Train small advisor models to steer black-box LLMs",
   "type": "library",
   "license": "MIT",
@@ -13,12 +13,12 @@
   },
   "autoload": {
     "psr-4": {
-      "Hop\\Fit\\": "src/"
+      "HopTop\\Fit\\": "src/"
     }
   },
   "autoload-dev": {
     "psr-4": {
-      "Hop\\Fit\\Tests\\": "tests/"
+      "HopTop\\Fit\\Tests\\": "tests/"
     }
   }
 }

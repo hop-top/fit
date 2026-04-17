@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace Hop\Fit\Tests;
+namespace HopTop\Fit\Tests;
 
-use Hop\Fit\CompositeScorer;
-use Hop\Fit\DimensionScorer;
-use Hop\Fit\Reward;
-use Hop\Fit\RewardScorerInterface;
+use HopTop\Fit\CompositeScorer;
+use HopTop\Fit\DimensionScorer;
+use HopTop\Fit\Reward;
+use HopTop\Fit\RewardScorerInterface;
 use PHPUnit\Framework\TestCase;
 
 class FixedScorer implements RewardScorerInterface

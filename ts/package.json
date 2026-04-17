@@ -1,5 +1,5 @@
 {
-  "name": "@hop/fit",
+  "name": "@hop-top/fit",
   "version": "0.1.0",
   "description": "Train small advisor models to steer black-box LLMs",
   "type": "module",
