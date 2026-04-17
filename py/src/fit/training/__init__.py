@@ -7,12 +7,13 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from .tracer import TraceIngester, TraceRecord
+    from .tracer import TraceIngestConfig, TraceIngester, TraceRecord
 
 
 def __getattr__(name: str) -> object:
     """Lazy-import training submodules on first access."""
     _modules = {
+        "TraceIngestConfig": ".tracer",
         "TraceIngester": ".tracer",
         "TraceRecord": ".tracer",
         "DatasetBuilder": ".dataset",
@@ -48,6 +49,7 @@ __all__ = [
     "ModelExporter",
     "RewardFn",
     "RubricJudgeReward",
+    "TraceIngestConfig",
     "TraceIngester",
     "TraceRecord",
     "TrainingExample",
