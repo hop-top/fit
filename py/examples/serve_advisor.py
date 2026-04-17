@@ -45,8 +45,14 @@ class FileAdvisor(Advisor):
         self._domain: str = cfg.get("domain", "general")
         self._steering: str = cfg.get("steering_text", "")
         self._confidence: float = float(cfg.get("confidence", 0.5))
-        self._constraints: list[str] = cfg.get("constraints", [])
-        self._meta: dict[str, Any] = cfg.get("metadata", {})
+        constraints = cfg.get("constraints", [])
+        metadata = cfg.get("metadata", {})
+        self._constraints: list[str] = (
+            constraints if isinstance(constraints, list) else []
+        )
+        self._meta: dict[str, Any] = (
+            metadata if isinstance(metadata, dict) else {}
+        )
         self._model_id: str = self._meta.get("model", f"file:{path}")
 
     @staticmethod

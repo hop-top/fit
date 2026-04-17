@@ -127,8 +127,17 @@ class TraceIngester:
                     raise ValueError(
                         f"Invalid YAML in {yaml_file}: {exc}"
                     ) from exc
-            if isinstance(raw, dict) and ("input" in raw or "frontier" in raw):
-                self._records.append(_parse_raw(raw))
+            if isinstance(raw, dict):
+                candidates = [raw]
+            elif isinstance(raw, list):
+                candidates = raw
+            else:
+                candidates = []
+            for item in candidates:
+                if isinstance(item, dict) and (
+                    "input" in item or "frontier" in item
+                ):
+                    self._records.append(_parse_raw(item))
         return self
 
     def load_sqlite(self, path: str | Path, table: str = "traces") -> TraceIngester:
