@@ -22,6 +22,9 @@ func main() {
 		Short:   "Train small advisor models to steer black-box LLMs",
 	})
 
+	// Load layered config; errors are non-fatal (defaults apply).
+	_ = LoadConfig()
+
 	root.Cmd.AddCommand(serveCmd(root))
 	root.Cmd.AddCommand(evalCmd(root))
 	root.Cmd.AddCommand(traceCmd(root))

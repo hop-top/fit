@@ -31,6 +31,7 @@ between YAML and JSON formats.`,
 }
 
 func traceListCmd(root *cli.Root) *cobra.Command {
+	cfg := Config()
 	var tracesDir string
 	logger := log.New(root.Viper)
 
@@ -66,12 +67,13 @@ func traceListCmd(root *cli.Root) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringVarP(&tracesDir, "dir", "d", "./traces", "traces directory")
+	cmd.Flags().StringVarP(&tracesDir, "dir", "d", cfg.TracesDir, "traces directory")
 
 	return cmd
 }
 
 func traceShowCmd() *cobra.Command {
+	cfg := Config()
 	var (
 		tracesDir string
 		format    string
@@ -119,7 +121,7 @@ func traceShowCmd() *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringVarP(&tracesDir, "dir", "d", "./traces", "traces directory")
+	cmd.Flags().StringVarP(&tracesDir, "dir", "d", cfg.TracesDir, "traces directory")
 	cmd.Flags().StringVarP(&format, "format", "f", "yaml", "output format (yaml|json)")
 
 	return cmd

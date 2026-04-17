@@ -16,10 +16,12 @@ import (
 
 func serveCmd(_ *cli.Root) *cobra.Command {
 	var (
-		addr        string
+		addr         string
 		advisorModel string
 		timeout      int
 	)
+
+	cfg := Config()
 
 	cmd := &cobra.Command{
 		Use:   "serve",
@@ -30,6 +32,16 @@ The server accepts POST /advise requests with context JSON and returns
 advice conforming to advice-format-v1.`,
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if !cmd.Flags().Changed("addr") {
+				addr = cfg.Addr
+			}
+			if !cmd.Flags().Changed("model") {
+				advisorModel = cfg.Model
+			}
+			if !cmd.Flags().Changed("timeout") {
+				timeout = cfg.Timeout
+			}
+
 			advisor := &stubAdvisor{model: advisorModel}
 
 			mux := http.NewServeMux()
@@ -63,9 +75,9 @@ advice conforming to advice-format-v1.`,
 		},
 	}
 
-	cmd.Flags().StringVarP(&addr, "addr", "a", ":8080", "listen address")
-	cmd.Flags().StringVarP(&advisorModel, "model", "m", "advisor-v1", "advisor model identifier")
-	cmd.Flags().IntVarP(&timeout, "timeout", "t", 5000, "request timeout in ms")
+	cmd.Flags().StringVarP(&addr, "addr", "a", cfg.Addr, "listen address")
+	cmd.Flags().StringVarP(&advisorModel, "model", "m", cfg.Model, "advisor model identifier")
+	cmd.Flags().IntVarP(&timeout, "timeout", "t", cfg.Timeout, "request timeout in ms")
 
 	return cmd
 }
