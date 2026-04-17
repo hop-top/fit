@@ -563,3 +563,38 @@ class TestPR33LoadBatchJsonNonDictRegression:
         )
         ingester = TraceIngester().load_batch([j])
         assert ingester.count() == 2
+
+
+class TestPR34LoadBatchErrorMessageWordingRegression:
+    """Regression: load_batch() JSON error message must mention "dict" or
+    "JSON object" — not just "an object".
+
+    PR #34 review item 1 — the ValueError raised at tracer.py:206-209
+    says "Expected each item ... to be an object" but the existing
+    test (TestPR33LoadBatchJsonNonDictRegression) uses match="dict"
+    which never matches. The word "dict" does not appear in the error.
+    Either the error message should include "dict" (or "JSON object")
+    or the existing test matcher is wrong.
+
+    This test is marked xfail(strict=True): it PASSES once the error
+    message is corrected to include "dict" or "JSON object".
+    """
+
+    @pytest.mark.xfail(strict=True)
+    def test_error_message_contains_dict_or_json_object(
+        self, tmp_path: Path
+    ) -> None:
+        """ValueError for non-dict JSON array item must mention
+        "dict" or "JSON object" so tests can match reliably."""
+        j = tmp_path / "traces.json"
+        j.write_text(
+            json.dumps([{"input": {}}, 42]),
+            encoding="utf-8",
+        )
+        with pytest.raises(ValueError) as exc_info:
+            TraceIngester().load_batch([j])
+        msg = str(exc_info.value).lower()
+        assert "dict" in msg or "json object" in msg, (
+            f"Error message must contain 'dict' or 'JSON object', "
+            f"got: {exc_info.value!r}"
+        )

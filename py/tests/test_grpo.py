@@ -298,3 +298,149 @@ class TestPR31ImportErrorMsgRegression:
             "The logger call in the except block must include the "
             "exception variable so the actual missing dep is diagnosable."
         )
+
+
+class TestPR34TrainSimplifiedDocstringAccuracyRegression:
+    """Regression: _train_simplified docstring must not claim features
+    that aren't implemented in the method body.
+
+    PR #34 review item 2 — the docstring (grpo.py:184-189) says
+    "KL penalty via beta" and "PPO-style clip range" but neither
+    cfg.beta nor cfg.clip_range is referenced in the method body.
+    The docstring is misleading. Fix must either implement those
+    features or remove the claims.
+
+    This test is marked xfail(strict=True): it PASSES once the
+    docstring is corrected to match reality.
+    """
+
+    @pytest.mark.xfail(strict=True)
+    def test_docstring_does_not_mention_unimplemented_features(self) -> None:
+        """Docstring must not claim beta/clip_range if body doesn't use them."""
+        import inspect
+
+        from fit.training.grpo import GRPOTrainer
+
+        source = inspect.getsource(GRPOTrainer._train_simplified)
+
+        # Extract docstring
+        docstring = GRPOTrainer._train_simplified.__doc__ or ""
+        docstring_lower = docstring.lower()
+
+        # Check method body (everything after the docstring)
+        # Find end of docstring
+        body = source
+        if '"""' in body:
+            parts = body.split('"""')
+            if len(parts) >= 3:
+                body = '"""'.join(parts[2:])  # everything after closing """
+
+        body_lower = body.lower()
+
+        # If docstring mentions beta, body must reference cfg.beta
+        if "beta" in docstring_lower:
+            assert "cfg.beta" in body or "self._config.beta" in body, (
+                "Docstring mentions 'beta' but method body never uses "
+                "cfg.beta — docstring is misleading"
+            )
+
+        # If docstring mentions clip range, body must reference cfg.clip_range
+        if "clip" in docstring_lower or "clip range" in docstring_lower:
+            assert "cfg.clip_range" in body or "self._config.clip_range" in body, (
+                "Docstring mentions 'clip range' but method body never uses "
+                "cfg.clip_range — docstring is misleading"
+            )
+
+
+class TestPR34RewardFnIgnoredInSimplifiedRegression:
+    """Regression: _train_simplified must warn when reward_fn is provided
+    but silently ignored.
+
+    PR #34 review item 3 — when simplified mode runs (ImportError fallback),
+    any user-supplied reward_fn is never consulted. Rewards always come
+    from TrainingExample.reward. A warning should be logged so the user
+    knows their custom reward function is being ignored.
+
+    This test is marked xfail(strict=True): it PASSES once the warning
+    is added to _train_simplified.
+    """
+
+    @pytest.mark.xfail(strict=True)
+    def test_warning_logged_when_reward_fn_ignored(self) -> None:
+        """Simplified mode must log a warning when reward_fn is provided."""
+        import logging
+        from unittest.mock import MagicMock, patch
+
+        # Create a mock reward function
+        mock_reward_fn = MagicMock(return_value=0.5)
+
+        cfg = GRPOConfig(epochs=1, batch_size=2, use_trl=False)
+        trainer = GRPOTrainer(cfg, reward_fn=mock_reward_fn)
+
+        dataset = _make_dataset(4)
+
+        with (
+            patch.dict(
+                "sys.modules",
+                {
+                    "torch": MagicMock(),
+                    "transformers": MagicMock(),
+                    "transformers.AutoModelForCausalLM": MagicMock(),
+                    "transformers.AutoTokenizer": MagicMock(),
+                },
+            ),
+            patch.object(
+                GRPOTrainer, "_train_simplified", wraps=trainer._train_simplified
+            ) as _spy,
+        ):
+            # We can't easily run _train_simplified without real torch.
+            # Instead, read the source and check for the warning pattern.
+            import inspect
+
+            source = inspect.getsource(GRPOTrainer._train_simplified)
+            source_lower = source.lower()
+
+            assert (
+                "reward_fn" in source_lower
+                and "warn" in source_lower
+            ), (
+                "_train_simplified must log a warning when self._reward_fn "
+                "is provided but simplified mode is used"
+            )
+
+
+class TestPR34EpochLossesMisleadingRegression:
+    """Regression: epoch_losses key must be renamed and must contain all
+    batch losses, not a sliced subset.
+
+    PR #34 review item 4 — in grpo.py:305, training_metadata['epoch_losses']
+    is sliced by cfg.epochs but the list contains per-batch losses.
+    The name implies per-epoch but contains per-batch, and the slice
+    discards data when batches > epochs.
+
+    This test is marked xfail(strict=True): it PASSES once the key is
+    renamed to "batch_losses" and contains ALL batch losses.
+    """
+
+    @pytest.mark.xfail(strict=True)
+    def test_losses_key_named_batch_losses_and_complete(self) -> None:
+        """training_metadata must use 'batch_losses' (not 'epoch_losses')
+        and contain ALL per-batch loss values."""
+        import inspect
+        import re
+
+        from fit.training.grpo import GRPOTrainer
+
+        source = inspect.getsource(GRPOTrainer._train_simplified)
+
+        # The key should be "batch_losses", not "epoch_losses"
+        assert '"batch_losses"' in source or "'batch_losses'" in source, (
+            "training_metadata key must be 'batch_losses', not 'epoch_losses'"
+        )
+
+        # The slice `[-cfg.epochs:]` must not appear for the losses key
+        # (it discards batch losses when batches > epochs)
+        assert "[-cfg.epochs" not in source or '"epoch_losses"' not in source, (
+            "epoch_losses must not be sliced by cfg.epochs — "
+            "use batch_losses without slicing"
+        )
