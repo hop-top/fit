@@ -557,3 +557,68 @@ class TestToGgufUnimplementedRaises:
             "to_gguf returned a path that does not "
             "exist on disk — no GGUF artifact was created"
         )
+
+
+# ---------------------------------------------------------------------------
+# Regression: to_onnx ignores output_path filename with optimum
+# ---------------------------------------------------------------------------
+
+
+class TestOnnxOutputPathConsistencyRegression:
+    """Regression: to_onnx optimum path ignores the caller's filename.
+
+    When ``output_path="exports/my_model.onnx"``, the optimum branch
+    discards the filename and returns ``out.parent / "model.onnx"``
+    instead. The torch fallback correctly writes to the exact
+    ``output_path``. Both paths must honour the caller's filename.
+    """
+
+    def test_optimum_path_returns_requested_output_path(
+        self, tmp_path: Path
+    ) -> None:
+        """to_onnx must return the exact path the caller requested."""
+        model_dir = tmp_path / "model"
+        model_dir.mkdir()
+        exporter = ModelExporter(str(model_dir))
+
+        requested = tmp_path / "exports" / "my_model.onnx"
+
+        def fake_save_pretrained(dest: str) -> None:
+            """Simulate optimum writing model.onnx into dest dir."""
+            Path(dest).mkdir(parents=True, exist_ok=True)
+            (Path(dest) / "model.onnx").write_bytes(
+                b"fake-onnx-payload"
+            )
+
+        mock_ort_model = MagicMock()
+        mock_ort_model.save_pretrained.side_effect = (
+            fake_save_pretrained
+        )
+
+        fake_optimum = MagicMock()
+        fake_optimum.onnxruntime.ORTModelForCausalLM = MagicMock(
+            from_pretrained=MagicMock(return_value=mock_ort_model),
+        )
+
+        fake_torch = MagicMock()
+        fake_transformers = MagicMock()
+
+        with patch.dict("sys.modules", {
+            "torch": fake_torch,
+            "transformers": fake_transformers,
+            "optimum": fake_optimum,
+            "optimum.onnxruntime": fake_optimum.onnxruntime,
+        }):
+            result = exporter.to_onnx(str(requested))
+
+        assert Path(result) == requested, (
+            f"to_onnx returned {result!s} but caller requested "
+            f"{requested!s}. The optimum branch ignores the "
+            "filename and always returns 'model.onnx'."
+        )
+        assert requested.exists(), (
+            "Artifact must exist at the requested path"
+        )
+        assert not (requested.parent / "model.onnx").exists(), (
+            "Original model.onnx must be renamed, not left behind"
+        )

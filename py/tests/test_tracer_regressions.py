@@ -369,3 +369,27 @@ class TestDetectFormatMixedDirectory:
         )
         ingester = TraceIngester().load_batch([tmp_path])
         assert ingester.count() == 2
+
+
+class TestSqliteUriCrossPlatformRegression:
+    """Regression: load_sqlite builds SQLite URI via f-string interpolation.
+
+    On Windows, Path objects produce backslashes and drive letters
+    (e.g. ``C:\\data\\traces.db``), making ``f"file:{path}?mode=ro"``
+    an invalid URI. The fix is to use ``path.as_uri()`` (or
+    ``path.resolve().as_uri()``) which emits a proper
+    ``file:///...`` URI on every platform.
+    """
+
+    def test_load_sqlite_does_not_use_raw_fstring_uri(self) -> None:
+        """Source must not contain ``f"file:{path}`` pattern."""
+        import inspect
+
+        source = inspect.getsource(TraceIngester.load_sqlite)
+
+        assert 'f"file:{path}' not in source, (
+            "load_sqlite uses raw f-string URI construction "
+            '(f"file:{path}?mode=ro") which breaks on Windows '
+            "paths with backslashes/drive letters. Use "
+            "path.resolve().as_uri() instead."
+        )
