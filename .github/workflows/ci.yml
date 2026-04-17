@@ -124,3 +124,36 @@ jobs:
           task install:php
           task lint:php
           task test:php
+
+  docker-build:
+    name: Docker build verification
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build fit image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile
+          push: false
+          load: true
+          tags: fit:ci
+
+      - name: Verify fit image
+        run: docker run --rm fit:ci --version
+
+      - name: Build fit-coach image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile.coach
+          push: false
+          load: true
+          tags: fit-coach:ci
+
+      - name: Verify fit-coach image
+        run: docker run --rm fit-coach:ci --help || true

@@ -1,0 +1,223 @@
+name: Nightly
+
+on:
+  schedule:
+    - cron: "0 4 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+  id-token: write
+  issues: write
+
+concurrency:
+  group: nightly
+  cancel-in-progress: true
+
+env:
+  REGISTRY: ghcr.io
+
+jobs:
+  # ---- 1. Full test suite (reuse CI matrix) ----
+  test:
+    name: test / ${{ matrix.language }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [go, ts, py, rs, php]
+        include:
+          - language: go
+            go-version: "1.26"
+          - language: ts
+            node-version: "22"
+          - language: py
+            python-version: "3.11"
+          - language: rs
+            rust-toolchain: stable
+          - language: php
+            php-version: "8.3"
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Install Task
+        uses: arduino/setup-task@v2
+        with:
+          version: 3.x
+
+      - name: Setup Go
+        if: matrix.language == 'go'
+        uses: actions/setup-go@v6
+        with:
+          go-version: ${{ matrix.go-version }}
+          cache-dependency-path: go/go.sum
+
+      - name: Go lint + test
+        if: matrix.language == 'go'
+        run: task install:go && task lint:go && task test:go
+
+      - name: Setup Node
+        if: matrix.language == 'ts'
+        uses: actions/setup-node@v6
+        with:
+          node-version: ${{ matrix.node-version }}
+
+      - name: Setup pnpm
+        if: matrix.language == 'ts'
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: TS lint + test
+        if: matrix.language == 'ts'
+        run: task install:ts && task lint:ts && task test:ts
+
+      - name: Setup Python
+        if: matrix.language == 'py'
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Python lint + test
+        if: matrix.language == 'py'
+        run: task install:py && task lint:py && task test:py
+
+      - name: Setup Rust
+        if: matrix.language == 'rs'
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+
+      - name: Rust cache
+        if: matrix.language == 'rs'
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: rs
+
+      - name: Rust lint + test
+        if: matrix.language == 'rs'
+        run: task install:rs && task lint:rs && task test:rs
+
+      - name: Setup PHP
+        if: matrix.language == 'php'
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php-version }}
+          tools: composer:v2
+
+      - name: PHP lint + test
+        if: matrix.language == 'php'
+        run: task install:php && task lint:php && task test:php
+
+  # ---- 2. Nightly Go snapshot ----
+  snapshot:
+    name: Go snapshot
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Setup Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: "1.26"
+          cache-dependency-path: go/go.sum
+
+      - name: Install syft
+        uses: anchore/sbom-action/download-syft@v0
+
+      - name: GoReleaser snapshot
+        uses: goreleaser/goreleaser-action@v7
+        with:
+          distribution: goreleaser
+          version: "~> v2"
+          args: release --snapshot --clean
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: fit-nightly-snapshot
+          path: dist/
+          retention-days: 7
+
+  # ---- 3. Nightly Docker images ----
+  docker:
+    name: docker / ${{ matrix.image }}
+    needs: test
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - image: fit
+            file: Dockerfile
+          - image: fit-coach
+            file: Dockerfile.coach
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Setup Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build + push nightly
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ${{ matrix.file }}
+          push: true
+          platforms: linux/amd64,linux/arm64
+          tags: ${{ env.REGISTRY }}/hop-top/${{ matrix.image }}:nightly
+          labels: |
+            org.opencontainers.image.title=${{ matrix.image }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.created=${{ github.event.repository.updated_at }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # ---- 4. Open issue on failure ----
+  notify-failure:
+    name: Notify failure
+    needs: [test, snapshot, docker]
+    if: failure()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Create or update failure issue
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          EXISTING=$(gh issue list \
+            --label nightly-failure \
+            --state open \
+            --json number \
+            --jq '.[0].number // empty')
+
+          BODY="Nightly build failed on $(date -u +%Y-%m-%d).
+
+          Run: ${RUN_URL}
+
+          Please investigate and resolve."
+
+          if [ -n "$EXISTING" ]; then
+            gh issue comment "$EXISTING" --body "$BODY"
+          else
+            gh issue create \
+              --title "Nightly build failure ($(date -u +%Y-%m-%d))" \
+              --body "$BODY" \
+              --label nightly-failure
+          fi
