@@ -161,11 +161,11 @@ class TestPushToHubBytesIO:
 
 
 # ---------------------------------------------------------------------------
-# PR #31 regression: to_onnx preflight only checks transformers, not torch
+# Regression: to_onnx preflight only checks transformers, not torch
 # ---------------------------------------------------------------------------
 
 
-class TestPR31OnnxMissingTorchRegression:
+class TestOnnxMissingTorchRegression:
     """to_onnx() preflight must check both torch and transformers."""
 
     def test_onnx_preflight_checks_torch_and_transformers(self) -> None:
@@ -198,11 +198,11 @@ class TestPR31OnnxMissingTorchRegression:
 
 
 # ---------------------------------------------------------------------------
-# PR #31 regression: to_safetensors torch import unguarded
+# Regression: to_safetensors torch import unguarded
 # ---------------------------------------------------------------------------
 
 
-class TestPR31SafetensorsTorchImportRegression:
+class TestSafetensorsTorchImportRegression:
     """to_safetensors() must wrap torch import with clear ImportError."""
 
     def test_safetensors_torch_import_is_guarded(self) -> None:
@@ -258,12 +258,12 @@ class TestPR31SafetensorsTorchImportRegression:
 
 
 # ---------------------------------------------------------------------------
-# PR #32 regression: to_onnx ImportError message falsely claims optimum is
+# Regression: to_onnx ImportError message falsely claims optimum is
 # required, but the code has a fallback path that works without it.
 # ---------------------------------------------------------------------------
 
 
-class TestPR32OnnxErrorMsgOptimumOptionalRegression:
+class TestOnnxErrorMsgOptimumOptionalRegression:
     """to_onnx() preflight error must present optimum as optional.
 
     The preflight ImportError (raised when torch/transformers are missing)
@@ -313,11 +313,11 @@ class TestPR32OnnxErrorMsgOptimumOptionalRegression:
 
 
 # ---------------------------------------------------------------------------
-# PR #33 regression: torch.load(..., weights_only=True) TypeError on old torch
+# Regression: torch.load(..., weights_only=True) TypeError on old torch
 # ---------------------------------------------------------------------------
 
 
-class TestPR33TorchLoadWeightsOnlyRegression:
+class TestTorchLoadWeightsOnlyRegression:
     """torch.load(..., weights_only=True) raises TypeError on torch < 1.13.
     to_safetensors() must catch TypeError and retry without weights_only."""
 
@@ -387,4 +387,173 @@ class TestPR33TorchLoadWeightsOnlyRegression:
         assert kwargs.get("weights_only") is True, (
             "torch.load should be called with weights_only=True when "
             f"torch supports it. Got kwargs: {kwargs}"
+        )
+
+
+# ---------------------------------------------------------------------------
+# Regression: ONNX export input names
+# ---------------------------------------------------------------------------
+
+
+class TestOnnxExportInputNames:
+    """_onnx_export_torch passes (input_ids, attention_mask) as inputs
+    but input_names must have matching length for torch.onnx.export."""
+
+    def test_input_names_count_matches_inputs(self) -> None:
+        """input_names must have as many entries as model inputs."""
+        exporter = ModelExporter("/tmp/nonexistent-model")
+
+        mock_model = MagicMock()
+        mock_tokenizer = MagicMock()
+
+        mock_tokenizer.return_value = {
+            "input_ids": [[1, 2, 3]],
+            "attention_mask": [[1, 1, 1]],
+        }
+
+        captured_export: dict = {}
+
+        def capture_export(
+            *args: object, **kwargs: object
+        ) -> None:
+            captured_export.update(kwargs)
+
+        mock_torch = MagicMock()
+        mock_torch.onnx.export = capture_export
+        mock_transformers = MagicMock()
+        mock_transformers.AutoModelForCausalLM.from_pretrained.return_value = (
+            mock_model
+        )
+        mock_transformers.AutoTokenizer.from_pretrained.return_value = (
+            mock_tokenizer
+        )
+
+        with patch.dict(
+            "sys.modules",
+            {
+                "torch": mock_torch,
+                "transformers": mock_transformers,
+            },
+        ):
+            try:
+                exporter._onnx_export_torch(
+                    exporter._model_path / "model.onnx"
+                )
+            except TypeError:
+                pass
+
+        input_names = captured_export.get("input_names", [])
+
+        if len(input_names) == 1:
+            pytest.fail(
+                "input_names has 1 entry "
+                f"({input_names}) but 2 inputs are passed "
+                "(input_ids + attention_mask). "
+                "torch.onnx.export requires matching lengths."
+            )
+
+        assert len(input_names) == 2
+
+
+# ---------------------------------------------------------------------------
+# Regression: push_to_hub uses BytesIO
+# ---------------------------------------------------------------------------
+
+
+class TestPushToHubUsesBufferIO:
+    """push_to_hub must pass BytesIO, not raw bytes, to
+    HfApi.upload_file."""
+
+    def test_uses_bytes_io_not_raw_bytes(
+        self, tmp_path: Path
+    ) -> None:
+        from fit.training.grpo import TrainingResult
+
+        model_dir = tmp_path / "model"
+        model_dir.mkdir()
+
+        exporter = ModelExporter(str(model_dir))
+        result = TrainingResult(
+            model_path=str(model_dir),
+            epochs_completed=1,
+            final_loss=0.1,
+            reward_stats={
+                "mean": 0.5,
+                "std": 0.0,
+                "min": 0.5,
+                "max": 0.5,
+                "count": 1.0,
+            },
+        )
+
+        captured_args: dict = {}
+
+        class FakeHfApi:
+            def upload_folder(self, **kwargs: object) -> None:
+                pass
+
+            def upload_file(self, **kwargs: object) -> None:
+                captured_args.update(kwargs)
+
+        with patch.dict(
+            "sys.modules",
+            {"huggingface_hub": MagicMock(HfApi=FakeHfApi)},
+        ):
+            exporter.push_to_hub("test/repo", result)
+
+        assert "path_or_fileobj" in captured_args
+        file_obj = captured_args["path_or_fileobj"]
+        import io
+
+        assert isinstance(file_obj, io.BytesIO), (
+            f"path_or_fileobj is {type(file_obj).__name__}, "
+            "expected BytesIO. Raw bytes cause upload_file "
+            "to fail."
+        )
+
+
+# ---------------------------------------------------------------------------
+# Regression: to_gguf raises NotImplementedError
+# ---------------------------------------------------------------------------
+
+
+class TestToGgufUnimplementedRaises:
+    """``ModelExporter.to_gguf()`` must either create a real artifact
+    or raise ``NotImplementedError`` -- it must not return a path
+    that does not exist on disk.
+    """
+
+    def test_returned_path_exists_or_raises(
+        self, tmp_path: Path
+    ) -> None:
+        """If ``to_gguf`` returns a path, that path must exist.
+        Otherwise the method must raise NotImplementedError."""
+        import sys
+        import types
+
+        model_dir = tmp_path / "model"
+        model_dir.mkdir()
+
+        exporter = ModelExporter(str(model_dir))
+
+        fake_gguf = types.ModuleType("gguf")
+        fake_gguf.GGUFWriter = type(  # type: ignore[attr-defined]
+            "GGUFWriter", (), {}
+        )
+        with patch.dict(sys.modules, {"gguf": fake_gguf}):
+            result = None
+            raised = False
+            try:
+                result = exporter.to_gguf(
+                    str(tmp_path / "model.gguf")
+                )
+            except NotImplementedError:
+                raised = True
+
+        if raised:
+            return  # acceptable
+
+        assert result is not None and result.exists(), (
+            "to_gguf returned a path that does not "
+            "exist on disk — no GGUF artifact was created"
         )

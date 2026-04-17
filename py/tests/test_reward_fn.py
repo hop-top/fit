@@ -204,16 +204,13 @@ class TestParseScoreBareInteger:
         assert _parse_score("I'd give it a 7 out of 10") == pytest.approx(0.7)
 
 
-class TestPR30ParseScoreRegressions:
-    """PR #30 review item 3 — _parse_score division-by-zero and unclamped
-    val/10.0 branches.
+class TestParseScoreDivisionAndClampingRegression:
+    """_parse_score division-by-zero and unclamped val/10.0 branches.
 
-    The prefixed/bare fraction branches divide by the denominator without
-    guarding against zero, so "5/0" raises ZeroDivisionError. The
-    val/10.0 branches (prefixed integer >1.0 and bare number >1.0)
+    The prefixed/bare fraction branches divide by the denominator
+    without guarding against zero, so "5/0" raises ZeroDivisionError.
+    The val/10.0 branches (prefixed integer >1.0 and bare number >1.0)
     never clamp, so values >10 return scores >1.0.
-
-    These tests FAIL on current code until _parse_score is fixed.
     """
 
     def test_division_by_zero_prefixed_fraction(self) -> None:
@@ -243,11 +240,11 @@ class TestPR30ParseScoreRegressions:
 
 
 # ---------------------------------------------------------------------------
-# PR #49 review: UserSignalReward docstring mismatch
+# Regression: UserSignalReward docstring mismatch
 # ---------------------------------------------------------------------------
 
 
-class TestPR49UserSignalRewardDocstringRegression:
+class TestUserSignalRewardDocstringRegression:
     """UserSignalReward's docstring mentions ``session_id`` and
     ``(session_id, step)`` as the keying mechanism, but the
     implementation actually hashes the output text with SHA-256.
@@ -273,11 +270,11 @@ class TestPR49UserSignalRewardDocstringRegression:
 
 
 # ---------------------------------------------------------------------------
-# PR #50 review: UserSignalReward inline comment mismatch
+# Regression: UserSignalReward inline comment mismatch
 # ---------------------------------------------------------------------------
 
 
-class TestPR50UserSignalRewardInlineCommentRegression:
+class TestUserSignalRewardInlineCommentRegression:
     """UserSignalReward.__call__ inline comment mentions 'context key'
     but the implementation only hashes ``output`` — no context-based
     lookup exists.
@@ -294,4 +291,175 @@ class TestPR50UserSignalRewardInlineCommentRegression:
         assert "context key" not in source, (
             "Inline comment still mentions 'context key'; "
             "impl only hashes output text"
+        )
+
+
+# ---------------------------------------------------------------------------
+# Regression: LLMJudge missing advice handling
+# ---------------------------------------------------------------------------
+
+
+class TestLLMJudgePassesAdvice:
+    """adapter.call signature is call(prompt, advice) but __call__
+    must pass both arguments. TypeError is swallowed if only prompt
+    is passed, always returning 0.5."""
+
+    def test_call_receives_two_args(self) -> None:
+        """Adapter.call must receive (prompt, Advice), not just
+        prompt."""
+        from unittest.mock import MagicMock, patch
+
+        from fit.types import Advice
+
+        judge = LLMJudgeReward()
+        mock_adapter = MagicMock()
+        mock_adapter.call.return_value = (
+            "Score: 0.9",
+            {"model": "test"},
+        )
+
+        with patch(
+            "fit.adapters.anthropic.AnthropicAdapter",
+            return_value=mock_adapter,
+        ):
+            judge("ctx", "some advice", "output text")
+
+        mock_adapter.call.assert_called_once()
+        call_args = mock_adapter.call.call_args
+
+        if len(call_args.args) == 1 and not call_args.kwargs:
+            pytest.fail(
+                "adapter.call received 1 positional arg "
+                f"({call_args.args[0][:60]!r}...) but needs "
+                "(prompt, Advice). "
+                "LLMJudgeReward swallows the TypeError and "
+                "returns 0.5."
+            )
+
+        assert len(call_args.args) >= 2
+        assert isinstance(call_args.args[1], Advice)
+
+    def test_returns_real_score_not_fallback(self) -> None:
+        """When adapter works, judge must return the parsed score,
+        not 0.5."""
+        from unittest.mock import MagicMock, patch
+
+        judge = LLMJudgeReward()
+
+        real_module = __import__(
+            "fit.adapters.anthropic",
+            fromlist=["AnthropicAdapter"],
+        )
+        RealClass = real_module.AnthropicAdapter
+
+        mock_adapter = MagicMock(spec=RealClass)
+        mock_adapter.call.return_value = (
+            "Score: 0.9",
+            {"model": "test"},
+        )
+
+        with patch(
+            "fit.adapters.anthropic.AnthropicAdapter",
+            return_value=mock_adapter,
+        ):
+            judge("ctx", "advice", "output")
+
+        mock_adapter.call.assert_called_once()
+        call_args = mock_adapter.call.call_args
+        assert len(call_args.args) >= 2, (
+            "adapter.call called with "
+            f"{len(call_args.args)} arg(s) but needs 2 "
+            "(prompt, Advice). In production this raises "
+            "TypeError, caught by except, returns fallback 0.5."
+        )
+
+
+# ---------------------------------------------------------------------------
+# Regression: _parse_score handles "Rating: 4/5"
+# ---------------------------------------------------------------------------
+
+
+class TestParseScorePrefixedFraction:
+    """_parse_score must handle "Rating: 4/5" as 0.8, not 0.4."""
+
+    def test_rating_fraction_4_over_5(self) -> None:
+        score = _parse_score("Rating: 4/5")
+        assert score == pytest.approx(0.8, abs=0.01), (
+            f"'Rating: 4/5' parsed as {score}, expected ~0.8. "
+            "Prefix regex matches '4' before fraction regex."
+        )
+
+    def test_score_fraction_3_over_10(self) -> None:
+        score = _parse_score("Score: 3/10")
+        assert score == pytest.approx(0.3, abs=0.01), (
+            f"'Score: 3/10' parsed as {score}, expected ~0.3."
+        )
+
+    def test_score_fraction_7_over_8(self) -> None:
+        score = _parse_score("Score: 7/8")
+        assert score == pytest.approx(0.875, abs=0.01), (
+            f"'Score: 7/8' parsed as {score}, expected ~0.875."
+        )
+
+
+# ---------------------------------------------------------------------------
+# Regression: Advice line within 100 chars
+# ---------------------------------------------------------------------------
+
+
+class TestLLMJudgeAdviceLineLength:
+    """``LLMJudgeReward.__call__`` Advice construction line must stay
+    within the 100-character project line-length limit.
+    """
+
+    def test_advice_line_within_limit(self) -> None:
+        """Every source line in LLMJudgeReward.__call__ must be
+        at most 100 characters wide."""
+        import inspect
+        import pathlib
+
+        src_file = pathlib.Path(
+            inspect.getfile(LLMJudgeReward)
+        )
+        source = src_file.read_text()
+        long_lines = [
+            (i + 1, line)
+            for i, line in enumerate(source.splitlines())
+            if "Advice(" in line and len(line.rstrip()) > 99
+        ]
+        assert not long_lines, (
+            "Advice construction line exceeds "
+            f"100-char limit: {long_lines}"
+        )
+
+
+# ---------------------------------------------------------------------------
+# Regression: LLMJudge returns fallback on ValueError
+# ---------------------------------------------------------------------------
+
+
+class TestLLMJudgeFallbackOnValueError:
+    """``LLMJudgeReward.__call__`` must catch ValueError (e.g. missing
+    API key) in addition to ImportError and return the 0.5 neutral
+    fallback instead of crashing.
+    """
+
+    def test_returns_fallback_on_missing_api_key(self) -> None:
+        """Calling LLMJudgeReward when the adapter raises ValueError
+        must return 0.5, not raise."""
+        from unittest.mock import patch
+
+        with patch(
+            "fit.training.reward_fn.AnthropicAdapter",
+            side_effect=ValueError("no api key"),
+            create=True,
+        ), patch(
+            "fit.adapters.anthropic.AnthropicAdapter",
+            side_effect=ValueError("no api key"),
+        ):
+            reward = LLMJudgeReward()
+            score = reward("ctx", "adv", "out")
+        assert score == 0.5, (
+            "LLMJudgeReward raises ValueError instead "
+            "of returning 0.5 neutral fallback"
         )

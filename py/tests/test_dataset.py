@@ -166,10 +166,10 @@ class TestDatasetBuilder:
             assert isinstance(ex.reward, float)
 
 
-class TestPR32SplitValRatioZeroRegression:
+class TestSplitValRatioZeroRegression:
     """Regression: FitDataset.split(val_ratio=0.0) must produce no val set.
 
-    PR #32 review item — split() uses
+    split() uses
         val_count = max(1, int(len(indices) * val_ratio))
     which means val_ratio=0.0 still allocates 1 validation example
     for any dataset with len >= 2. This violates expected semantics:
@@ -203,10 +203,10 @@ class TestPR32SplitValRatioZeroRegression:
         )
 
 
-class TestPR33SplitValRatioValidationRegression:
+class TestSplitValRatioValidationRegression:
     """Regression: FitDataset.split() must validate val_ratio bounds.
 
-    PR #33 review item 6 — split() does not validate val_ratio.
+    split() does not validate val_ratio.
     Negative ratios or values >1 produce nonsensical splits.
     Fix should raise ValueError for out-of-range ratios.
     """
@@ -228,11 +228,11 @@ class TestPR33SplitValRatioValidationRegression:
             FitDataset(examples).split(val_ratio=1.5)
 
 
-class TestPR49SplitValRatioOneRegression:
+class TestSplitValRatioOneRegression:
     """Regression: FitDataset.split(val_ratio=1.0) is allowed but silently
     clamped, producing an empty training set.
 
-    PR #49 review — val_ratio=1.0 means "put everything in validation,
+    val_ratio=1.0 means "put everything in validation,
     nothing in train", which is never useful and likely a caller mistake.
     split() should raise ValueError for val_ratio >= 1.0 (exclusive upper
     bound).  Currently the value is silently accepted and clamped.
@@ -245,3 +245,58 @@ class TestPR49SplitValRatioOneRegression:
         ]
         with pytest.raises(ValueError, match="val_ratio"):
             FitDataset(examples).split(val_ratio=1.0)
+
+
+# ---------------------------------------------------------------------------
+# Regression: split doesn't steal examples for val
+# ---------------------------------------------------------------------------
+
+
+class TestSplitDoesNotStealForVal:
+    """val_count = max(1, int(len * val_ratio)) means len=1 => val=1,
+    train=0. The split must not produce an empty train set."""
+
+    def test_single_example_split(self) -> None:
+        """Dataset with 1 example should not produce empty train."""
+        examples = [
+            TrainingExample(
+                context="ctx", advice="adv", reward=0.5
+            )
+        ]
+        ds = FitDataset(examples)
+        train, val = ds.split(val_ratio=0.1)
+
+        assert len(train) >= 1, (
+            "split() produces empty train set "
+            "for single-example dataset. "
+            f"train={len(train)}, val={len(val)}"
+        )
+
+    def test_two_example_split_both_nonempty(self) -> None:
+        """Dataset with 2 examples must have both train and val
+        non-empty."""
+        examples = [
+            TrainingExample(
+                context=f"ctx{i}", advice=f"adv{i}", reward=0.5
+            )
+            for i in range(2)
+        ]
+        ds = FitDataset(examples)
+        train, val = ds.split(val_ratio=0.1)
+
+        assert len(val) > 0, "Val set must not be empty"
+        assert len(train) > 0, "Train set must not be empty"
+
+    def test_split_preserves_total(self) -> None:
+        """train + val must equal original dataset size."""
+        examples = [
+            TrainingExample(
+                context=f"ctx{i}",
+                advice=f"adv{i}",
+                reward=float(i),
+            )
+            for i in range(5)
+        ]
+        ds = FitDataset(examples)
+        train, val = ds.split(val_ratio=0.2)
+        assert len(train) + len(val) == len(ds)

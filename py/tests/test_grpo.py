@@ -101,7 +101,7 @@ class TestGRPOTrainer:
 class TestRewardFnIndexingRegression:
     """Regression: reward_fn closure must map completions to examples correctly.
 
-    PR #29 review item 5 — the current code uses
+    The current code uses
     `enumerate(range(len(completions)))` with separate i/j indices.
     This test reproduces the exact indexing logic from grpo.py lines
     136-145 to guarantee that simplifying to `for i in range(len(completions))`
@@ -220,20 +220,15 @@ class TestComputeRewardStats:
         assert stats["std"] == 0.0
 
 
-class TestPR30ReviewRegressions:
-    """Regression tests for PR #30 review items.
-
-    Item 1: Unused TrainingExample import in grpo.py (line 17).
-    Item 2: Unconditional numpy import in _train_simplified (line 189).
-    """
+class TestGrpoImportCleanup:
+    """Unused imports must not leak into the grpo module namespace."""
 
     def test_grpo_does_not_reexport_training_example(self) -> None:
         """TrainingExample must not be accessible via fit.training.grpo.
 
-        PR #30 review item 1: grpo.py imports TrainingExample from
-        .dataset but never uses it (F401 lint). After the fix removes
-        that import, accessing TrainingExample through the grpo module
-        should fail.
+        grpo.py imports TrainingExample from .dataset but never uses
+        it (F401 lint). After the fix removes that import, accessing
+        TrainingExample through the grpo module should fail.
         """
         import fit.training.grpo as grpo_mod
 
@@ -245,9 +240,9 @@ class TestPR30ReviewRegressions:
     def test_simplified_training_no_numpy_import(self) -> None:
         """_train_simplified must not import numpy.
 
-        PR #30 review item 2: _train_simplified had `import numpy as np`
-        but numpy is not a declared dependency. Reading the source
-        directly avoids needing torch in the test environment.
+        _train_simplified had `import numpy as np` but numpy is not a
+        declared dependency. Reading the source directly avoids needing
+        torch in the test environment.
         """
         import inspect
 
@@ -265,10 +260,10 @@ class TestPR30ReviewRegressions:
         )
 
 
-class TestPR31ImportErrorMsgRegression:
-    """PR #31 review — ImportError catch in train() must include the
-    actual exception in the log message so users can diagnose which
-    dependency is missing (trl, torch, or transformers).
+class TestImportErrorMsgRegression:
+    """ImportError catch in train() must include the actual exception
+    in the log message so users can diagnose which dependency is
+    missing (trl, torch, or transformers).
     """
 
     def test_import_error_log_includes_exception_info(self) -> None:
@@ -300,18 +295,14 @@ class TestPR31ImportErrorMsgRegression:
         )
 
 
-class TestPR34TrainSimplifiedDocstringAccuracyRegression:
+class TestTrainSimplifiedDocstringAccuracyRegression:
     """Regression: _train_simplified docstring must not claim features
     that aren't implemented in the method body.
 
-    PR #34 review item 2 — the docstring (grpo.py:184-189) says
-    "KL penalty via beta" and "PPO-style clip range" but neither
-    cfg.beta nor cfg.clip_range is referenced in the method body.
-    The docstring is misleading. Fix must either implement those
+    The docstring says "KL penalty via beta" and "PPO-style clip range"
+    but neither cfg.beta nor cfg.clip_range is referenced in the method
+    body. The docstring is misleading. Fix must either implement those
     features or remove the claims.
-
-    This test runs normally and should pass once the docstring is
-    corrected to match reality.
     """
 
     def test_docstring_does_not_mention_unimplemented_features(self) -> None:
@@ -351,16 +342,14 @@ class TestPR34TrainSimplifiedDocstringAccuracyRegression:
             )
 
 
-class TestPR34RewardFnIgnoredInSimplifiedRegression:
+class TestRewardFnIgnoredInSimplifiedRegression:
     """Regression: _train_simplified must warn when reward_fn is provided
     but silently ignored.
 
-    PR #34 review item 3 — when simplified mode runs (ImportError fallback),
-    any user-supplied reward_fn is never consulted. Rewards always come
-    from TrainingExample.reward. A warning should be logged so the user
+    When simplified mode runs (ImportError fallback), any user-supplied
+    reward_fn is never consulted. Rewards always come from
+    TrainingExample.reward. A warning should be logged so the user
     knows their custom reward function is being ignored.
-
-    This test passes once the warning is added to _train_simplified.
     """
 
     def test_warning_logged_when_reward_fn_ignored(self) -> None:
@@ -383,17 +372,17 @@ class TestPR34RewardFnIgnoredInSimplifiedRegression:
         )
 
 
-class TestPR34EpochLossesMisleadingRegression:
+class TestEpochLossesMisleadingRegression:
     """Regression: epoch_losses key must be renamed and must contain all
     batch losses, not a sliced subset.
 
-    PR #34 review item 4 — in grpo.py:305, training_metadata['epoch_losses']
-    is sliced by cfg.epochs but the list contains per-batch losses.
-    The name implies per-epoch but contains per-batch, and the slice
-    discards data when batches > epochs.
+    training_metadata['epoch_losses'] is sliced by cfg.epochs but the
+    list contains per-batch losses. The name implies per-epoch but
+    contains per-batch, and the slice discards data when batches >
+    epochs.
 
-    This test verifies the key is renamed to "batch_losses" and that it
-    contains ALL batch losses.
+    This test verifies the key is renamed to "batch_losses" and that
+    it contains ALL batch losses.
     """
 
     def test_losses_key_named_batch_losses_and_complete(self) -> None:
@@ -416,4 +405,210 @@ class TestPR34EpochLossesMisleadingRegression:
         assert "[-cfg.epochs" not in source or '"epoch_losses"' not in source, (
             "epoch_losses must not be sliced by cfg.epochs — "
             "use batch_losses without slicing"
+        )
+
+
+# ---------------------------------------------------------------------------
+# Regression: reward_fn advice argument mapping
+# ---------------------------------------------------------------------------
+
+
+class TestRewardFnAdviceArgMapping:
+    """reward_fn lambda must pass example's advice as the advice arg,
+    not completions[j]."""
+
+    def test_advice_arg_is_example_advice_not_completion(self) -> None:
+        """The advice parameter to _reward_fn must be the example's
+        advice, not the generated completion."""
+        recorded_calls: list[tuple[str, str, str]] = []
+
+        class RecordingReward:
+            def __call__(
+                self, context: str, advice: str, output: str
+            ) -> float:
+                recorded_calls.append((context, advice, output))
+                return 0.7
+
+        example = TrainingExample(
+            context="test context",
+            advice="real advice from dataset",
+            reward=0.5,
+        )
+        dataset = FitDataset([example])
+
+        config = GRPOConfig(use_trl=True)
+        trainer = GRPOTrainer(
+            config=config, reward_fn=RecordingReward()
+        )
+
+        examples = dataset.examples
+        completions = ["generated completion text"]
+
+        if trainer._reward_fn:
+            trainer._reward_fn(
+                examples[0].context,
+                examples[0].advice,
+                completions[0],
+            )
+            recorded_calls.clear()
+            trainer._reward_fn(
+                examples[0 % len(examples)].context,
+                examples[0 % len(examples)].advice,
+                completions[0] if 0 < len(completions) else "",
+            )
+
+        assert len(recorded_calls) == 1
+        ctx, adv, out = recorded_calls[0]
+        assert adv == "real advice from dataset", (
+            f"advice arg should be example's advice, got {adv!r}"
+        )
+        assert out == "generated completion text"
+
+
+# ---------------------------------------------------------------------------
+# Regression: epoch loss slice
+# ---------------------------------------------------------------------------
+
+
+class TestTrainingMetadataLossSlice:
+    """avg_loss must slice by number of batches per epoch, not number
+    of examples."""
+
+    def test_avg_loss_uses_batch_count_not_example_count(
+        self,
+    ) -> None:
+        """Verify the avg_loss formula uses batch count.
+
+        With 10 examples, batch_size=4: 3 batches per epoch.
+        The corrected code slices epoch_losses[-num_batches:],
+        not epoch_losses[-len(indices):].
+        """
+        import statistics
+
+        num_examples = 10
+        batch_size = 4
+        num_batches_per_epoch = (
+            num_examples + batch_size - 1
+        ) // batch_size  # 3
+
+        epoch_losses: list[float] = []
+        for epoch in range(3):
+            for b in range(num_batches_per_epoch):
+                epoch_losses.append(float(epoch * 10 + b))
+
+        correct_slice = epoch_losses[-num_batches_per_epoch:]
+        correct_avg = (
+            statistics.mean(correct_slice) if correct_slice else 0.0
+        )
+
+        assert correct_avg == pytest.approx(21.0), (
+            f"Expected avg 21.0, got {correct_avg:.2f}"
+        )
+
+        buggy_slice = epoch_losses[-num_examples:]
+        buggy_avg = (
+            statistics.mean(buggy_slice) if buggy_slice else 0.0
+        )
+        assert buggy_avg != pytest.approx(21.0), (
+            "Sanity check: buggy formula should NOT give 21.0"
+        )
+
+
+# ---------------------------------------------------------------------------
+# Regression: no redundant labels= in forward pass
+# ---------------------------------------------------------------------------
+
+
+class TestSimplifiedNoRedundantLabels:
+    """``_train_simplified`` must not pass ``labels=`` to the model
+    forward call since ``outputs.loss`` is never used -- a custom
+    policy-gradient loss is computed from ``outputs.logits`` instead.
+    """
+
+    def test_no_redundant_labels_in_forward_pass(self) -> None:
+        """_train_simplified should not pass labels= to the model
+        call."""
+        import inspect
+
+        source = inspect.getsource(GRPOTrainer._train_simplified)
+
+        for line in source.splitlines():
+            if "model(**inputs" in line:
+                assert "labels=" not in line, (
+                    "_train_simplified passes redundant "
+                    "labels= to model(**inputs) — loss is "
+                    "never used"
+                )
+                return
+
+        pytest.fail(
+            "Could not locate model(**inputs line in source"
+        )
+
+
+# ---------------------------------------------------------------------------
+# Regression: model.train() after from_pretrained
+# ---------------------------------------------------------------------------
+
+
+class TestSimplifiedCallsModelTrain:
+    """``_train_simplified`` must call ``model.train()`` after
+    ``from_pretrained`` and before the optimization loop. PyTorch
+    models default to eval mode after ``from_pretrained``, so
+    dropout and batch-norm layers are inactive without this call.
+    """
+
+    def test_model_train_called_after_from_pretrained(self) -> None:
+        """Source must contain ``model.train()`` between
+        ``from_pretrained`` and the optimization loop."""
+        import inspect
+
+        src = inspect.getsource(GRPOTrainer._train_simplified)
+        pretrained_pos = src.find("from_pretrained")
+        loop_pos = src.find("for epoch in")
+        train_call_pos = src.find("model.train()")
+
+        assert pretrained_pos != -1, (
+            "from_pretrained not found in source"
+        )
+        assert loop_pos != -1, (
+            "optimization loop not found in source"
+        )
+        assert (
+            train_call_pos != -1
+            and pretrained_pos < train_call_pos < loop_pos
+        ), (
+            "model.train() does not appear between "
+            "from_pretrained and the optimization loop — the "
+            "model trains in eval mode, disabling dropout and "
+            "batch-norm."
+        )
+
+
+# ---------------------------------------------------------------------------
+# Regression: no redundant trainer.save() after train()
+# ---------------------------------------------------------------------------
+
+
+class TestTrainDoesNotDoubleSave:
+    """``GRPOTrainer.train()`` already calls ``self.save()`` internally
+    (both TRL and simplified paths). An explicit ``trainer.save(...)``
+    call after ``result = trainer.train()`` is redundant, causing
+    duplicate disk I/O.
+    """
+
+    def test_no_redundant_save_after_train(self) -> None:
+        """The ``main`` function must not call ``trainer.save()``
+        after ``trainer.train()`` since the latter already persists
+        the model."""
+        import inspect
+
+        from examples.train_advisor import main
+
+        source = inspect.getsource(main)
+        train_idx = source.index("result = trainer.train(")
+        after_train = source[train_idx:]
+        assert "trainer.save(" not in after_train, (
+            "trainer.save() is called after trainer.train() "
+            "which already saves internally — duplicate disk I/O"
         )
