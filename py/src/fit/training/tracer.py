@@ -154,7 +154,7 @@ class TraceIngester:
                 for row_index, row in enumerate(cursor, start=1):
                     try:
                         raw = json.loads(row["data"])
-                    except json.JSONDecodeError as exc:
+                    except (json.JSONDecodeError, TypeError) as exc:
                         raise ValueError(
                             f"Invalid JSON in SQLite table {table!r} at "
                             f"row {row_index} from {path}: {exc}"
