@@ -1,5 +1,7 @@
 # fit
 
+[![Nightly](https://github.com/hop-top/fit/actions/workflows/nightly.yml/badge.svg)](https://github.com/hop-top/fit/actions/workflows/nightly.yml)
+
 Train small advisor models to steer black-box LLMs without
 fine-tuning.
 
@@ -109,13 +111,63 @@ pip install trl                  # TRL-backed GRPO
 pip install safetensors          # safetensors export
 ```
 
+## Docker
+
+### Run fit CLI
+
+```bash
+docker run --rm ghcr.io/hop-top/fit:latest serve \
+  --config /data/config.yaml
+
+docker run --rm ghcr.io/hop-top/fit:latest eval \
+  --dataset /data/eval.jsonl
+```
+
+### Run fit-coach (training pipeline)
+
+```bash
+docker run --rm ghcr.io/hop-top/fit-coach:latest \
+  train --config /data/coach.yaml
+
+docker run --rm -p 8080:8080 ghcr.io/hop-top/fit-coach:latest \
+  serve --port 8080
+```
+
+### Nightly images
+
+Nightly builds from `main` are pushed daily at 04:00 UTC:
+
+```bash
+docker pull ghcr.io/hop-top/fit:nightly
+docker pull ghcr.io/hop-top/fit-coach:nightly
+```
+
+### Local development with docker-compose
+
+```bash
+# Start all services
+docker compose up -d
+
+# Open a shell in the dev container (all 5 toolchains)
+docker compose exec dev bash
+
+# Run tests inside dev container
+make check
+```
+
+### VS Code / Codespaces devcontainer
+
+Open this repo in VS Code and select "Reopen in Container", or
+launch a GitHub Codespace. The devcontainer installs Go, Node,
+Python, Rust, PHP, and all project dependencies automatically.
+
 ## Building
 
 ```bash
-task check        # lint + test all ports
-task test:py      # python only
-task test:go      # go only
-task lint         # lint all
+make check        # lint + test all ports
+make test\:py     # python only
+make test\:go     # go only
+make lint         # lint all
 ```
 
 ## Spec

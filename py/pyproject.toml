@@ -28,3 +28,7 @@ target-version = "py311"
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_mode = "auto"
+markers = [
+    "slow: marks tests needing network/large downloads (deselect with '-m \"not slow\"')",
+    "gpu: marks tests requiring GPU/torch (deselect with '-m \"not gpu\"')",
+]

@@ -36,11 +36,6 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
-      - name: Install Task
-        uses: arduino/setup-task@v2
-        with:
-          version: 3.x
-
       # --- Go ---
       - name: Setup Go
         if: matrix.language == 'go'
@@ -52,9 +47,9 @@ jobs:
       - name: Go install + lint + test
         if: matrix.language == 'go'
         run: |
-          task install:go
-          task lint:go
-          task test:go
+          make install\:go
+          make lint\:go
+          make test\:go
 
       # --- TypeScript ---
       - name: Setup Node
@@ -72,9 +67,9 @@ jobs:
       - name: TS install + lint + test
         if: matrix.language == 'ts'
         run: |
-          task install:ts
-          task lint:ts
-          task test:ts
+          make install\:ts
+          make lint\:ts
+          make test\:ts
 
       # --- Python ---
       - name: Setup Python
@@ -86,9 +81,9 @@ jobs:
       - name: Python install + lint + test
         if: matrix.language == 'py'
         run: |
-          task install:py
-          task lint:py
-          task test:py
+          make install\:py
+          make lint\:py
+          make test\:py
 
       # --- Rust ---
       - name: Setup Rust
@@ -106,9 +101,9 @@ jobs:
       - name: Rust install + lint + test
         if: matrix.language == 'rs'
         run: |
-          task install:rs
-          task lint:rs
-          task test:rs
+          make install\:rs
+          make lint\:rs
+          make test\:rs
 
       # --- PHP ---
       - name: Setup PHP
@@ -121,6 +116,39 @@ jobs:
       - name: PHP install + lint + test
         if: matrix.language == 'php'
         run: |
-          task install:php
-          task lint:php
-          task test:php
+          make install\:php
+          make lint\:php
+          make test\:php
+
+  docker-build:
+    name: Docker build verification
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build fit image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile
+          push: false
+          load: true
+          tags: fit:ci
+
+      - name: Verify fit image
+        run: docker run --rm fit:ci --version
+
+      - name: Build fit-coach image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile.coach
+          push: false
+          load: true
+          tags: fit-coach:ci
+
+      - name: Verify fit-coach image
+        run: docker run --rm fit-coach:ci --version
