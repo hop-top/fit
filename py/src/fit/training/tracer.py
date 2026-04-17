@@ -142,8 +142,8 @@ class TraceIngester:
             conn.row_factory = sqlite3.Row
             # Try JSON blob column first
             try:
-                rows = conn.execute(f"SELECT data FROM {table}").fetchall()
-                for row_index, row in enumerate(rows, start=1):
+                cursor = conn.execute(f"SELECT data FROM {table}")
+                for row_index, row in enumerate(cursor, start=1):
                     raw = json.loads(row["data"])
                     if not isinstance(raw, dict):
                         raise ValueError(
@@ -157,12 +157,11 @@ class TraceIngester:
                 pass
 
             # Fallback: individual columns matching trace schema
-            cursor = conn.execute(f"SELECT * FROM {table} LIMIT 1")
-            cols = [desc[0] for desc in cursor.description] if cursor.description else []
-            cursor.close()
+            probe = conn.execute(f"SELECT * FROM {table} LIMIT 1")
+            cols = [desc[0] for desc in probe.description] if probe.description else []
+            probe.close()
 
-            rows = conn.execute(f"SELECT * FROM {table}").fetchall()
-            for row in rows:
+            for row in conn.execute(f"SELECT * FROM {table}"):
                 raw = dict(zip(cols, row))
                 self._records.append(_parse_raw(raw))
         finally:

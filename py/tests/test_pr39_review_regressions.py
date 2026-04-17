@@ -15,10 +15,6 @@ import pytest
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="PR #39 review: load_sqlite uses fetchall instead of cursor streaming",
-)
 class TestLoadSqliteFetchallRegression:
     """``TraceIngester.load_sqlite`` calls ``.fetchall()`` on both the
     JSON-blob path (line 145) and the fallback individual-columns path
