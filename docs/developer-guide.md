@@ -277,14 +277,10 @@ pip install fit[adapters]
 ### With Training
 
 ```bash
-# GRPO training + dataset builder
-pip install fit[training]
-
-# Optional: for TRL-backed GRPO (faster, more stable)
-pip install trl
-
-# Optional: for safetensors export
-pip install safetensors
+pip install fit
+pip install torch transformers   # simplified GRPO
+pip install trl                  # TRL-backed GRPO
+pip install safetensors          # safetensors export
 
 # Optional: for development
 pip install fit[dev]
@@ -348,7 +344,9 @@ from fit.advisor import Advisor
 from fit.types import Advice
 
 class CustomAdvisor(Advisor):
-    def generate_advice(self, context: dict) -> Advice:
+    def generate_advice(
+        self, context: dict[str, Any]
+    ) -> Advice:
         # Your logic here
         return Advice(
             domain="custom",
@@ -504,8 +502,11 @@ writer = TraceWriter("./production_traces")
 writer.write(trace)
 
 # Also record manually with feedback
-trace.reward = Reward(score=user_feedback_score, breakdown={})
-writer.write(trace)
+from dataclasses import replace
+updated = replace(trace, reward=Reward(
+    score=user_feedback_score, breakdown={}
+))
+writer.write(updated)
 ```
 
 ### Ingesting Traces
@@ -606,7 +607,7 @@ exporter = ModelExporter("./advisor-output")
 exporter.to_safetensors("./advisor-safetensors")
 
 # Export to GGUF (quantized, for inference)
-exporter.to_gguf("./advisor-gguf")
+exporter.to_gguf("./advisor.gguf")
 
 # Generate model card (metadata)
 card = exporter.generate_model_card(result)
@@ -908,15 +909,14 @@ reward = scorer(context, advice, output)
 Weighted combination for training:
 
 ```python
-from fit.training.reward_fn import CompositeReward, ExactMatchReward
+from fit.training.reward_fn import (
+    CompositeReward, ExactMatchReward,
+)
 
-scorers = [
-    ExactMatchReward("IRS Publication"),
-    ExactMatchReward("filing status")
-]
-weights = [0.6, 0.4]
-
-scorer = CompositeReward(scorers, weights)
+scorer = CompositeReward([
+    (ExactMatchReward("IRS Publication"), 0.6),
+    (ExactMatchReward("filing status"), 0.4),
+])
 reward = scorer(context, advice, output)
 ```
 
@@ -1035,7 +1035,8 @@ ingester = TraceIngester(config)
 > **Coming soon** (Next release)
 >
 > Structured error codes and recovery strategies. For now:
-> - Errors are caught and logged within `Session.run()`
+> - Errors are caught within `Session.run()` and reflected
+>   in trace/reward state
 > - Check `reward.metadata` for scorer failures
 > - Check `trace.metadata` for frontier failures
 > - Inspect `trace.advice.confidence` for advisor uncertainty
@@ -1116,7 +1117,7 @@ Cross-language example:
 python -m examples.train_advisor --traces ./traces
 
 # Serve in Go
-go run github.com/hop-top/fit/cmd/fit serve --config config.yaml
+go run hop.top/fit/cmd/fit serve --config config.yaml
 
 # Consume in TypeScript/Node.js
 import { RemoteAdvisor } from "@hop/fit";
@@ -1405,7 +1406,10 @@ class TraceIngester:
     def __init__(self, config: TraceIngestConfig | None = None):
         """Initialize with optional config."""
 
-    def load_batch(self, paths: list[str | Path]) -> None:
+    def load_batch(
+        self, paths: list[str | Path],
+        fmt: str = "auto",
+    ) -> TraceIngester:
         """Load traces from files or directories."""
 
     def filter(self, domain: str | None = None) -> TraceIngester:
@@ -1447,9 +1451,9 @@ class FitDataset:
     def reward_stats(self) -> dict[str, float]:
         """Compute mean, std, min, max, count."""
 
-    def __len__(self) -> int
-    def __getitem__(self, idx: int) -> TrainingExample
-    def __iter__(self)
+    def __len__(self) -> int: ...
+    def __getitem__(self, idx: int) -> TrainingExample: ...
+    def __iter__(self): ...
 ```
 
 #### GRPOTrainer
@@ -1495,10 +1499,10 @@ class ModelExporter:
     def to_safetensors(self, output_dir: str) -> Path:
         """Export to safetensors format."""
 
-    def to_gguf(self, output_dir: str) -> Path:
+    def to_gguf(self, output_path: str) -> Path:
         """Export to GGUF (quantized)."""
 
-    def to_onnx(self, output_dir: str) -> Path:
+    def to_onnx(self, output_path: str) -> Path:
         """Export to ONNX format."""
 
     def generate_model_card(self, result: TrainingResult) -> dict:
