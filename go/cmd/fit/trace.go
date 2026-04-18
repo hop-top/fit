@@ -111,14 +111,14 @@ func traceShowCmd() *cobra.Command {
 
 			data, err := os.ReadFile(stepFile)
 			if err != nil {
-				return fmt.Errorf("read trace: %w", err)
+				return errTraceRead(stepFile, err)
 			}
 
 			if format == "json" {
 				// Parse YAML and re-emit as JSON
 				var trace fit.Trace
 				if err := yamlUnmarshal(data, &trace); err != nil {
-					return fmt.Errorf("parse trace: %w", err)
+					return errTraceParse(stepFile, err)
 				}
 				sanitizeNonFinite(&trace)
 				enc := json.NewEncoder(cmd.OutOrStdout())

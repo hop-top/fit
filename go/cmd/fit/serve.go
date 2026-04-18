@@ -58,10 +58,16 @@ advice conforming to advice-format-v1.`,
 			router.Handle("POST", "/advise", handleAdvise(advisor, timeout))
 
 			fmt.Fprintf(cmd.OutOrStdout(), "fit advisor serving on %s\n", addr)
-			return api.ListenAndServeWithSignals(addr, router,
+			if err := api.ListenAndServeWithSignals(addr, router,
 				api.WithReadTimeout(time.Duration(timeout)*time.Millisecond),
 				api.WithWriteTimeout(time.Duration(timeout*2)*time.Millisecond),
-			)
+			); err != nil {
+				if isAddrInUse(err) {
+					return errPortInUse(addr, err)
+				}
+				return err
+			}
+			return nil
 		},
 	}
 
