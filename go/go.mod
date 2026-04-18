@@ -6,7 +6,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/spf13/cobra v1.10.2
 	gopkg.in/yaml.v3 v3.0.1
-	hop.top/kit v0.3.2-patch.3
+	hop.top/kit v0.3.2-patch.3.0.20260418173953-a64c48e0a68f
 )
 
 require (
