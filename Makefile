@@ -9,6 +9,7 @@ PHP_DIR  := php
         build\:go build\:ts build\:rs \
         test\:go test\:ts test\:py test\:rs test\:php \
         test-e2e-smoke test-e2e-full test-e2e-gpu \
+        test-workflow \
         lint\:go lint\:ts lint\:py lint\:rs lint\:php \
         format typecheck links setup parity
 
@@ -82,6 +83,11 @@ test-e2e-full:
 
 test-e2e-gpu:
 	cd $(PY_DIR) && PYTHONPATH=src python -m pytest tests/e2e/ -m gpu -q
+
+# --- Workflow shell tests ---
+
+test-workflow:
+	bats .github/tests/
 
 # --- Lint ---
 
