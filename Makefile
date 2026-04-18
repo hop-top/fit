@@ -9,13 +9,14 @@ PHP_DIR  := php
         build\:go build\:ts build\:rs \
         test\:go test\:ts test\:py test\:rs test\:php \
         test-e2e-smoke test-e2e-full test-e2e-gpu \
-        lint\:go lint\:ts lint\:py lint\:rs lint\:php
+        lint\:go lint\:ts lint\:py lint\:rs lint\:php \
+        format typecheck links setup parity
 
 # --- Aggregates ---
 
 default: install build check
 
-check: lint test
+check: lint typecheck test
 
 # --- Install ---
 
@@ -100,3 +101,36 @@ lint\:rs:
 
 lint\:php:
 	cd $(PHP_DIR) && vendor/bin/phpstan analyse src/
+
+# --- Format ---
+
+format:
+	cd $(PY_DIR) && ruff format src/ tests/
+	cd $(GO_DIR) && gofmt -w .
+	cd $(TS_DIR) && npx prettier --write .
+	cd $(RS_DIR) && cargo fmt
+	cd $(PHP_DIR) && vendor/bin/php-cs-fixer fix src/
+
+# --- Typecheck ---
+
+typecheck:
+	cd $(PY_DIR) && mypy src/
+
+# --- Links ---
+
+links:
+	@if command -v lychee >/dev/null 2>&1; then \
+		lychee --no-progress .; \
+	else \
+		echo "lychee not installed; skipping link check"; \
+	fi
+
+# --- Setup ---
+
+setup: install
+	@if [ -d .githooks ]; then git config core.hooksPath .githooks; fi
+
+# --- Parity ---
+
+parity:
+	cd $(GO_DIR) && go test -tags parity ./cmd/fit/... -v
