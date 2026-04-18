@@ -16,6 +16,8 @@ type FitConfig struct {
 	TracesDir string `yaml:"traces-dir"`
 	Timeout   int    `yaml:"timeout"`
 	Model     string `yaml:"model"`
+	Bus       string `yaml:"bus"`
+	BusPath   string `yaml:"bus-path"`
 }
 
 // globalConfig is loaded once at startup and shared across subcommands.
@@ -24,6 +26,8 @@ var globalConfig = FitConfig{
 	TracesDir: "./traces",
 	Timeout:   5000,
 	Model:     "advisor-v1",
+	Bus:       "memory",
+	BusPath:   "",
 }
 
 // Config returns the loaded configuration.
@@ -63,6 +67,12 @@ func envOverride(dst any) {
 	}
 	if v := os.Getenv("FIT_MODEL"); v != "" {
 		cfg.Model = v
+	}
+	if v := os.Getenv("FIT_BUS"); v != "" {
+		cfg.Bus = v
+	}
+	if v := os.Getenv("FIT_BUS_PATH"); v != "" {
+		cfg.BusPath = v
 	}
 }
 
