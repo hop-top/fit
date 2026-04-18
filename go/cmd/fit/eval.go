@@ -61,6 +61,7 @@ and prints scores to stdout.`,
 
 			format := root.Viper.GetString("format")
 			var totalScore float64
+			var scoredCount int
 			var rows []evalRow
 
 			for _, tc := range cases {
@@ -72,9 +73,14 @@ and prints scores to stdout.`,
 					continue
 				}
 				scoreVal := 0.0
+				scored := false
 				if result.Reward.Score != nil {
 					scoreVal = *result.Reward.Score
 					totalScore += scoreVal
+					scored = true
+				}
+				if scored {
+					scoredCount++
 				}
 				rows = append(rows, evalRow{
 					Score:  scoreVal,
@@ -85,9 +91,13 @@ and prints scores to stdout.`,
 
 			summary := evalSummary{}
 			if len(rows) > 0 {
+				avg := 0.0
+				if scoredCount > 0 {
+					avg = totalScore / float64(scoredCount)
+				}
 				summary = evalSummary{
 					Cases:    len(rows),
-					AvgScore: totalScore / float64(len(rows)),
+					AvgScore: avg,
 				}
 			}
 

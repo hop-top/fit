@@ -79,15 +79,16 @@ func initBus(cmd *cobra.Command) (bus.Bus, error) {
 	cfg := Config()
 	adapter := cfg.Bus
 
-	if cmd.Flags().Changed("bus") {
-		adapter, _ = cmd.Flags().GetString("bus")
+	pf := cmd.Root().PersistentFlags()
+	if pf.Changed("bus") {
+		adapter, _ = pf.GetString("bus")
 	}
 
 	switch adapter {
 	case "sqlite":
 		path := cfg.BusPath
-		if cmd.Flags().Changed("bus-path") {
-			path, _ = cmd.Flags().GetString("bus-path")
+		if pf.Changed("bus-path") {
+			path, _ = pf.GetString("bus-path")
 		}
 		if path == "" {
 			path = defaultBusPath()
