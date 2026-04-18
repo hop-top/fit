@@ -64,7 +64,7 @@ class CompositeScorer(RewardScorer):
 
 
 class DimensionScorer(RewardScorer):
-    """Stub scorer for a single dimension (returns neutral scores)."""
+    """Neutral scorer for a single dimension (always returns 0.5)."""
 
     def __init__(self, dimension: str) -> None:
         self._dimension = dimension

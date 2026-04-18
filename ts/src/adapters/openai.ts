@@ -1,5 +1,12 @@
 import type { Advice, Adapter } from "../types.js";
 
+/**
+ * OpenAI adapter stub — returns a fixed response without calling the API.
+ *
+ * Not yet wired to the OpenAI SDK. See the Python port for a working
+ * implementation. This adapter satisfies the Adapter interface so the
+ * session pipeline can be exercised end-to-end without network access.
+ */
 export class OpenAIAdapter implements Adapter {
   constructor(
     private model = "gpt-5",
@@ -7,8 +14,8 @@ export class OpenAIAdapter implements Adapter {
   ) {}
 
   async call(
-    prompt: string,
-    advice: Advice,
+    _prompt: string,
+    _advice: Advice,
   ): Promise<{ output: string; meta: Record<string, unknown> }> {
     return {
       output: "(openai stub)",

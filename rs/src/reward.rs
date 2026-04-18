@@ -159,7 +159,7 @@ impl RewardScorer for CompositeScorer {
     }
 }
 
-/// Single-dimension stub scorer for testing.
+/// Neutral scorer for a single dimension (always returns 0.5).
 pub struct DimensionScorer {
     dimension: String,
 }

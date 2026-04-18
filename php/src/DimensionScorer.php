@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace HopTop\Fit;
 
 /**
- * Single-dimension stub scorer for testing.
+ * Neutral scorer for a single dimension (always returns 0.5).
  */
 class DimensionScorer implements RewardScorerInterface
 {
