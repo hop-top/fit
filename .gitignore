@@ -6,3 +6,5 @@ __pycache__/
 .target/
 target/
 .phpunit.result.cache
+.env
+go/fit
