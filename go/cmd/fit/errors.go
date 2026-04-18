@@ -12,6 +12,7 @@ import (
 const (
 	errCodeDatasetMissing = "DATASET_MISSING"
 	errCodeDatasetLoad    = "DATASET_LOAD_FAILED"
+	errCodeDatasetParse   = "DATASET_PARSE_FAILED"
 	errCodeDatasetFormat  = "DATASET_FORMAT_UNSUPPORTED"
 	errCodeTraceRead      = "TRACE_READ_FAILED"
 	errCodeTraceParse     = "TRACE_PARSE_FAILED"
@@ -42,6 +43,18 @@ func errDatasetLoad(path string, cause error) *cli.CorrectedError {
 			"use an absolute path",
 		},
 		Retryable: true,
+	}
+}
+
+func errDatasetParse(path string, cause error) *cli.CorrectedError {
+	return &cli.CorrectedError{
+		Code:    errCodeDatasetParse,
+		Message: fmt.Sprintf("cannot parse dataset: %s", path),
+		Cause:   cause.Error(),
+		Fix: fmt.Sprintf(
+			"ensure %s contains valid JSON", path,
+		),
+		Retryable: false,
 	}
 }
 

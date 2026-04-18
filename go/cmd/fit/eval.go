@@ -162,7 +162,7 @@ func loadDataset(path string) ([]evalCase, error) {
 	case ".json":
 		var cases []evalCase
 		if err := json.Unmarshal(data, &cases); err != nil {
-			return nil, errDatasetLoad(path, err)
+			return nil, errDatasetParse(path, err)
 		}
 		return cases, nil
 	default:

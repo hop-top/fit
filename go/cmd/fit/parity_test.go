@@ -98,16 +98,25 @@ func run(args ...string) parityResult {
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
 
+	if err := cmd.Start(); err != nil {
+		return parityResult{
+			stdout: stdout.String(),
+			stderr: stderr.String(),
+			code:   1,
+		}
+	}
+
 	done := make(chan error, 1)
-	_ = cmd.Start()
 	go func() { done <- cmd.Wait() }()
 
 	var runErr error
 	select {
 	case runErr = <-done:
 	case <-time.After(10 * time.Second):
-		_ = cmd.Process.Kill()
-		runErr = cmd.Wait()
+		if cmd.Process != nil {
+			_ = cmd.Process.Kill()
+		}
+		runErr = <-done
 	}
 
 	code := 0

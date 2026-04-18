@@ -118,8 +118,12 @@ func newSQLiteBus(path string) (bus.Bus, error) {
 func defaultBusPath() string {
 	dir, err := xdg.DataDir("fit")
 	if err != nil || dir == "" {
-		home, _ := os.UserHomeDir()
-		dir = filepath.Join(home, ".local", "share", "fit")
+		home, homeErr := os.UserHomeDir()
+		if homeErr == nil && home != "" {
+			dir = filepath.Join(home, ".local", "share", "fit")
+		} else {
+			dir = filepath.Join(os.TempDir(), "fit")
+		}
 	}
 	return filepath.Join(dir, "events.db")
 }
