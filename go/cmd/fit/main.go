@@ -33,13 +33,24 @@ func main() {
 		logger.Warn("config load failed, using defaults", "err", err)
 	}
 
-	root.Cmd.AddCommand(serveCmd(root))
-	root.Cmd.AddCommand(evalCmd(root))
-	root.Cmd.AddCommand(traceCmd(root))
+	// Init app-wide event bus (in-memory by default).
+	appBus = bus.New()
+
+	serve := serveCmd(root)
+	eval := evalCmd(root)
+	trace := traceCmd(root)
+
+	root.Cmd.AddCommand(serve)
+	root.Cmd.AddCommand(eval)
+	root.Cmd.AddCommand(trace)
+
+	registerCompletions(root.Cmd, serve, eval, trace)
 
 	loadAliases(root)
 
 	if err := root.Execute(context.Background()); err != nil {
+		_ = appBus.Close(context.Background())
 		os.Exit(1)
 	}
+	_ = appBus.Close(context.Background())
 }

@@ -4,7 +4,10 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"sync/atomic"
 	"testing"
+
+	"hop.top/kit/bus"
 )
 
 // --- Stub implementations ---
@@ -256,4 +259,92 @@ type errorScorer struct{}
 
 func (e *errorScorer) Score(_ string, _ map[string]any) (*Reward, error) {
 	return nil, &simpleError{"scorer failed"}
+}
+
+// --- Bus integration tests ---
+
+func TestBusPublishesTraceCreatedEvent(t *testing.T) {
+	b := bus.New()
+	var received atomic.Int64
+	var lastPayload atomic.Value
+
+	b.Subscribe(string(TopicTraceCreated), func(_ context.Context, e bus.Event) error {
+		received.Add(1)
+		lastPayload.Store(e.Payload)
+		return nil
+	})
+
+	session := &Session{
+		Advisor: &stubAdvisor{advice: &Advice{Domain: "test", Version: "1.0"}},
+		Adapter: &stubAdapter{output: "out"},
+		Scorer:  &stubScorer{score: 0.8},
+		Config:  SessionConfig{Mode: "one-shot"},
+		Bus:     b,
+	}
+
+	result, err := session.Run(context.Background(), "hello", nil)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if got := received.Load(); got != 1 {
+		t.Fatalf("expected 1 event, got %d", got)
+	}
+
+	trace, ok := lastPayload.Load().(*Trace)
+	if !ok {
+		t.Fatal("payload is not *Trace")
+	}
+	if trace.ID != result.Trace.ID {
+		t.Errorf("event trace ID = %q, want %q", trace.ID, result.Trace.ID)
+	}
+
+	_ = b.Close(context.Background())
+}
+
+func TestNilBusDoesNotPanic(t *testing.T) {
+	session := &Session{
+		Advisor: &stubAdvisor{advice: &Advice{Domain: "test", Version: "1.0"}},
+		Adapter: &stubAdapter{output: "out"},
+		Scorer:  &stubScorer{score: 0.5},
+		Config:  SessionConfig{Mode: "one-shot"},
+		// Bus intentionally nil
+	}
+
+	result, err := session.Run(context.Background(), "test", nil)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result.Trace == nil {
+		t.Fatal("trace is nil")
+	}
+}
+
+func TestBusPublishesOnFrontierFailure(t *testing.T) {
+	b := bus.New()
+	var received atomic.Int64
+
+	b.Subscribe(string(TopicTraceCreated), func(_ context.Context, _ bus.Event) error {
+		received.Add(1)
+		return nil
+	})
+
+	session := &Session{
+		Advisor: &stubAdvisor{advice: &Advice{Domain: "test", Version: "1.0"}},
+		Adapter: &errorAdapter{},
+		Scorer:  &stubScorer{score: 0.5},
+		Config:  SessionConfig{Mode: "one-shot"},
+		Bus:     b,
+	}
+
+	_, err := session.Run(context.Background(), "test", nil)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if got := received.Load(); got != 1 {
+		t.Errorf("expected 1 event on frontier failure, got %d", got)
+	}
+
+	_ = b.Close(context.Background())
 }

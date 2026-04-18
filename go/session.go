@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"hop.top/kit/bus"
 )
 
 // SessionState represents the session lifecycle state.
@@ -40,6 +41,7 @@ type Session struct {
 	Scorer  RewardScorer
 	Config  SessionConfig
 	Tracer  *TraceWriter
+	Bus     bus.Bus // optional; nil means no events published
 }
 
 // NewSession creates a new session with defaults.
@@ -89,6 +91,7 @@ func (s *Session) Run(ctx context.Context, prompt string, contextMap map[string]
 			Frontier:  frontierMeta,
 			Reward:    partialReward,
 		}
+		s.publishTraceEvent(ctx, partialTrace)
 		return &SessionResult{Output: output, Reward: partialReward, Trace: partialTrace}, nil
 	}
 
@@ -113,6 +116,15 @@ func (s *Session) Run(ctx context.Context, prompt string, contextMap map[string]
 		Frontier:  frontierMeta,
 		Reward:    reward,
 	}
+	s.publishTraceEvent(ctx, trace)
 
 	return &SessionResult{Output: output, Reward: reward, Trace: trace}, nil
+}
+
+// publishTraceEvent emits a trace event on the bus if configured.
+func (s *Session) publishTraceEvent(ctx context.Context, trace *Trace) {
+	if s.Bus == nil {
+		return
+	}
+	_ = s.Bus.Publish(ctx, newTraceEvent("fit.session", trace))
 }

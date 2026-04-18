@@ -47,12 +47,12 @@ and prints scores to stdout.`,
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if datasetPath == "" {
-				return fmt.Errorf("--dataset is required")
+				return errDatasetMissing()
 			}
 
 			cases, err := loadDataset(datasetPath)
 			if err != nil {
-				return fmt.Errorf("load dataset: %w", err)
+				return err
 			}
 
 			advisor := &stubAdvisor{model: "eval-advisor"}
@@ -65,6 +65,7 @@ and prints scores to stdout.`,
 
 			for _, tc := range cases {
 				session := fit.NewSession(advisor, adapter, scorer)
+				session.Bus = appBus
 				result, err := session.Run(cmd.Context(), tc.Prompt, tc.Context)
 				if err != nil {
 					fmt.Fprintf(cmd.ErrOrStderr(), "FAIL: %s: %v\n", tc.Prompt, err)
@@ -143,7 +144,7 @@ func (e *evalAdapter) Call(_ context.Context, prompt string, advice *fit.Advice)
 func loadDataset(path string) ([]evalCase, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
-		return nil, err
+		return nil, errDatasetLoad(path, err)
 	}
 
 	ext := filepath.Ext(path)
@@ -151,11 +152,11 @@ func loadDataset(path string) ([]evalCase, error) {
 	case ".json":
 		var cases []evalCase
 		if err := json.Unmarshal(data, &cases); err != nil {
-			return nil, err
+			return nil, errDatasetLoad(path, err)
 		}
 		return cases, nil
 	default:
-		return nil, fmt.Errorf("unsupported dataset format: %s (use .json)", ext)
+		return nil, errDatasetFormat(ext)
 	}
 }
 
