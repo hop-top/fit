@@ -12,9 +12,13 @@ import (
 	"context"
 	"os"
 
+	"hop.top/kit/bus"
 	"hop.top/kit/cli"
 	"hop.top/kit/log"
 )
+
+// appBus is the application-wide event bus for trace lifecycle events.
+var appBus bus.Bus
 
 func main() {
 	root := cli.New(cli.Config{
@@ -32,6 +36,8 @@ func main() {
 	root.Cmd.AddCommand(serveCmd(root))
 	root.Cmd.AddCommand(evalCmd(root))
 	root.Cmd.AddCommand(traceCmd(root))
+
+	loadAliases(root)
 
 	if err := root.Execute(context.Background()); err != nil {
 		os.Exit(1)
