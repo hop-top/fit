@@ -1,3 +1,13 @@
+export {
+  createBus,
+  createEvent,
+  matchTopic,
+  MemoryAdapter,
+  TOPIC_TRACE_CREATED,
+  TOPIC_TRACE_BATCH,
+  TOPIC_ADVISOR_UPDATED,
+} from "./bus.js";
+export type { Bus, BusAdapter, BusEvent, BusHandler, Unsubscribe } from "./bus.js";
 export { Advisor, RemoteAdvisor } from "./advisor.js";
 export { RewardScorer, CompositeScorer } from "./reward.js";
 export { Session, SessionConfig, SessionState } from "./session.js";
