@@ -4,6 +4,12 @@ from typing import Any
 
 import httpx
 
+from ..errors import (
+    ADAPTER_AUTH,
+    ADAPTER_RATE,
+    ADAPTER_TIMEOUT,
+    FitError,
+)
 from ..types import Advice
 from .base import Adapter
 
@@ -33,8 +39,26 @@ class OllamaAdapter(Adapter):
         }
         url = f"{self._base_url}/api/chat"
         client = self._http_client or httpx
-        resp = client.post(url, json=payload, timeout=60.0)
-        resp.raise_for_status()
+        try:
+            resp = client.post(url, json=payload, timeout=60.0)
+            resp.raise_for_status()
+        except httpx.TimeoutException as exc:
+            raise FitError(
+                ADAPTER_TIMEOUT, str(exc),
+                cause=type(exc).__name__,
+                fix="Increase timeout or check Ollama is running",
+                retryable=True,
+            ) from exc
+        except httpx.HTTPStatusError as exc:
+            raise _map_ollama_http_error(exc) from exc
+        except Exception as exc:
+            raise FitError(
+                ADAPTER_TIMEOUT, str(exc),
+                cause=type(exc).__name__,
+                fix="Check Ollama is running at "
+                f"{self._base_url}",
+            ) from exc
+
         data = resp.json()
 
         output = data["message"]["content"]
@@ -50,3 +74,29 @@ class OllamaAdapter(Adapter):
             },
         }
         return output, metadata
+
+
+def _map_ollama_http_error(exc: httpx.HTTPStatusError) -> FitError:
+    """Map Ollama HTTP status errors to FitError."""
+    status = exc.response.status_code
+    cls_name = type(exc).__name__
+
+    if status == 401:
+        return FitError(
+            ADAPTER_AUTH, str(exc),
+            cause=cls_name,
+            fix="Check Ollama authentication config",
+        )
+    if status == 429:
+        return FitError(
+            ADAPTER_RATE, str(exc),
+            cause=cls_name,
+            fix="Back off and retry",
+            retryable=True,
+        )
+
+    return FitError(
+        ADAPTER_TIMEOUT, str(exc),
+        cause=cls_name,
+        fix="Check Ollama server status",
+    )

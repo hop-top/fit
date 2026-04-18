@@ -3,6 +3,15 @@ from __future__ import annotations
 import os
 from typing import Any
 
+import httpx
+
+from ..errors import (
+    ADAPTER_AUTH,
+    ADAPTER_MODEL,
+    ADAPTER_RATE,
+    ADAPTER_TIMEOUT,
+    FitError,
+)
 from ..types import Advice
 from .base import Adapter
 
@@ -37,18 +46,23 @@ class AnthropicAdapter(Adapter):
         else:
             api_key = self._api_key or os.environ.get("ANTHROPIC_API_KEY")
             if not api_key:
-                raise ValueError(
+                raise FitError(
+                    ADAPTER_AUTH,
                     "Anthropic API key required: "
-                    "pass api_key or set ANTHROPIC_API_KEY"
+                    "pass api_key or set ANTHROPIC_API_KEY",
+                    fix="export ANTHROPIC_API_KEY=... or pass api_key=",
                 )
             client = _anthropic.Anthropic(api_key=api_key)
 
-        response = client.messages.create(
-            model=self._model,
-            max_tokens=4096,
-            system=system_prompt,
-            messages=[{"role": "user", "content": prompt}],
-        )
+        try:
+            response = client.messages.create(
+                model=self._model,
+                max_tokens=4096,
+                system=system_prompt,
+                messages=[{"role": "user", "content": prompt}],
+            )
+        except Exception as exc:
+            raise _map_anthropic_error(exc) from exc
 
         output = "".join(
             block.text for block in response.content if hasattr(block, "text")
@@ -65,3 +79,43 @@ class AnthropicAdapter(Adapter):
             },
         }
         return output, metadata
+
+
+def _map_anthropic_error(exc: Exception) -> FitError:
+    """Convert Anthropic SDK / transport exceptions to FitError."""
+    cls_name = type(exc).__name__
+
+    if _anthropic is not None:
+        if isinstance(exc, _anthropic.AuthenticationError):
+            return FitError(
+                ADAPTER_AUTH, str(exc),
+                cause=cls_name,
+                fix="Check ANTHROPIC_API_KEY is valid",
+            )
+        if isinstance(exc, _anthropic.RateLimitError):
+            return FitError(
+                ADAPTER_RATE, str(exc),
+                cause=cls_name,
+                fix="Back off and retry",
+                retryable=True,
+            )
+        if isinstance(exc, _anthropic.NotFoundError):
+            return FitError(
+                ADAPTER_MODEL, str(exc),
+                cause=cls_name,
+                fix="Check model name is valid",
+            )
+
+    if isinstance(exc, httpx.TimeoutException):
+        return FitError(
+            ADAPTER_TIMEOUT, str(exc),
+            cause=cls_name,
+            fix="Increase timeout or retry",
+            retryable=True,
+        )
+
+    # Unknown SDK error — still wrap with generic code
+    return FitError(
+        ADAPTER_MODEL, str(exc),
+        cause=cls_name,
+    )
