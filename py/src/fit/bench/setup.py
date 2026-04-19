@@ -10,7 +10,7 @@ from typing import Literal
 
 Status = Literal["ok", "missing", "error"]
 
-_VENDOR_DIR = Path(__file__).resolve().parents[5] / "vendor"
+_VENDOR_DIR = Path(__file__).resolve().parents[4] / "vendor"
 _POLYGLOT_DIR = _VENDOR_DIR / "polyglot-benchmark" / "exercises"
 
 

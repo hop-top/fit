@@ -13,6 +13,8 @@ REQUIRED_FIELDS = {"name", "candidates", "metrics", "scorer"}
 EXPECTED_CANDIDATE_NAMES = {"baseline", "fit-steered"}
 
 SUITE_FILES = sorted(SUITE_DIR.glob("*.yaml"))
+if not SUITE_FILES:
+    pytest.fail(f"No suite YAML files found in {SUITE_DIR}", pytrace=False)
 
 
 @pytest.fixture(params=SUITE_FILES, ids=lambda p: p.stem)

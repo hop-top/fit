@@ -36,12 +36,14 @@ run_with_ben() {
 
 if run_with_ben; then
   echo "==> baseline arm" >&2
-  baseline_id=$(ben run "$suite_yaml" --candidate baseline "$@" \
-    | tee /dev/stderr | tail -1 | grep -oE '[a-f0-9-]{36}' || true)
+  baseline_out=$(ben run "$suite_yaml" --candidate baseline "$@" 2>&1 | tee /dev/stderr) \
+    || { echo "ERROR: baseline run failed" >&2; exit 1; }
+  baseline_id=$(echo "$baseline_out" | tail -1 | grep -oE '[a-f0-9-]{36}' || true)
 
   echo "==> fit-steered arm" >&2
-  steered_id=$(ben run "$suite_yaml" --candidate fit-steered "$@" \
-    | tee /dev/stderr | tail -1 | grep -oE '[a-f0-9-]{36}' || true)
+  steered_out=$(ben run "$suite_yaml" --candidate fit-steered "$@" 2>&1 | tee /dev/stderr) \
+    || { echo "ERROR: fit-steered run failed" >&2; exit 1; }
+  steered_id=$(echo "$steered_out" | tail -1 | grep -oE '[a-f0-9-]{36}' || true)
 
   if [[ -n "$baseline_id" && -n "$steered_id" ]]; then
     echo "==> compare" >&2
