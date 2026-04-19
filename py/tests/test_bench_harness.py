@@ -1,4 +1,4 @@
-"""Tests for fit.bench.harness — benchmark wrappers."""
+"""Tests for fit.bench.harness — SWE-bench, TAU-bench, Aider wrappers."""
 
 from __future__ import annotations
 
@@ -6,15 +6,162 @@ import importlib
 import json
 import sys
 import types
-from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
 
-from fit.bench.harness import run_aider
+from fit.bench.harness import run_aider, run_swebench
 
 
-RESULTS_KEYS = {"pass_rate_1", "pass_rate_2", "total", "correct_edit_format_pct"}
+SWEBENCH_RESULT_KEYS = {"resolved", "total", "resolution_pct"}
+AIDER_RESULTS_KEYS = {
+    "pass_rate_1", "pass_rate_2", "total", "correct_edit_format_pct",
+}
+
+
+# ── SWE-bench tests ───────────────────────────────────────────
+
+
+class TestRunSwebenchResults:
+    def _fake_swebench(self):
+        mod = types.ModuleType("swebench")
+        harness = types.ModuleType("swebench.harness")
+        run_eval = MagicMock(return_value={"resolved": 5, "total": 10})
+        harness.run_evaluation = run_eval
+        mod.harness = harness
+        return mod, harness, run_eval
+
+    def test_returns_dict_with_expected_keys(self, tmp_path):
+        mod, harness, _ = self._fake_swebench()
+        out = tmp_path / "preds.jsonl"
+        with patch.dict(sys.modules, {
+            "swebench": mod, "swebench.harness": harness,
+        }):
+            result = run_swebench(
+                endpoint="http://localhost:8080", output_path=str(out),
+            )
+        assert set(result.keys()) == SWEBENCH_RESULT_KEYS
+
+    def test_resolution_pct_calculated(self, tmp_path):
+        mod, harness, _ = self._fake_swebench()
+        out = tmp_path / "preds.jsonl"
+        with patch.dict(sys.modules, {
+            "swebench": mod, "swebench.harness": harness,
+        }):
+            result = run_swebench(
+                endpoint="http://localhost:8080", output_path=str(out),
+            )
+        assert result["resolution_pct"] == pytest.approx(50.0)
+
+    def test_zero_total_yields_zero_pct(self, tmp_path):
+        mod = types.ModuleType("swebench")
+        harness = types.ModuleType("swebench.harness")
+        harness.run_evaluation = MagicMock(
+            return_value={"resolved": 0, "total": 0},
+        )
+        mod.harness = harness
+        out = tmp_path / "preds.jsonl"
+        with patch.dict(sys.modules, {
+            "swebench": mod, "swebench.harness": harness,
+        }):
+            result = run_swebench(
+                endpoint="http://localhost:8080", output_path=str(out),
+            )
+        assert result["resolution_pct"] == 0.0
+
+
+class TestSwebenchOutputPath:
+    def test_output_path_parent_created(self, tmp_path):
+        mod = types.ModuleType("swebench")
+        harness = types.ModuleType("swebench.harness")
+        harness.run_evaluation = MagicMock(
+            return_value={"resolved": 1, "total": 1},
+        )
+        mod.harness = harness
+        nested = tmp_path / "sub" / "dir" / "preds.jsonl"
+        with patch.dict(sys.modules, {
+            "swebench": mod, "swebench.harness": harness,
+        }):
+            run_swebench(
+                endpoint="http://localhost:8080", output_path=str(nested),
+            )
+        assert nested.parent.is_dir()
+
+
+class TestSwebenchInstanceIds:
+    def test_instance_ids_passed_through(self, tmp_path):
+        mod = types.ModuleType("swebench")
+        harness = types.ModuleType("swebench.harness")
+        run_eval = MagicMock(return_value={"resolved": 1, "total": 2})
+        harness.run_evaluation = run_eval
+        mod.harness = harness
+        out = tmp_path / "preds.jsonl"
+        ids = ["django__django-11099", "sympy__sympy-20049"]
+        with patch.dict(sys.modules, {
+            "swebench": mod, "swebench.harness": harness,
+        }):
+            run_swebench(
+                endpoint="http://localhost:8080",
+                output_path=str(out),
+                instance_ids=ids,
+            )
+        assert run_eval.call_args[1]["instance_ids"] == ids
+
+    def test_none_instance_ids_omitted(self, tmp_path):
+        mod = types.ModuleType("swebench")
+        harness = types.ModuleType("swebench.harness")
+        run_eval = MagicMock(return_value={"resolved": 0, "total": 0})
+        harness.run_evaluation = run_eval
+        mod.harness = harness
+        out = tmp_path / "preds.jsonl"
+        with patch.dict(sys.modules, {
+            "swebench": mod, "swebench.harness": harness,
+        }):
+            run_swebench(
+                endpoint="http://localhost:8080",
+                output_path=str(out),
+            )
+        assert "instance_ids" not in run_eval.call_args[1]
+
+
+class TestSwebenchImportError:
+    def test_raises_import_error(self, tmp_path):
+        with patch.dict(sys.modules, {"swebench": None}):
+            with pytest.raises(ImportError, match="swebench"):
+                run_swebench(
+                    endpoint="http://localhost:8080",
+                    output_path=str(tmp_path / "out.jsonl"),
+                )
+
+
+class TestSwebenchEndpointAndDataset:
+    def test_endpoint_and_dataset_passed(self, tmp_path):
+        mod = types.ModuleType("swebench")
+        harness = types.ModuleType("swebench.harness")
+        run_eval = MagicMock(return_value={"resolved": 0, "total": 0})
+        harness.run_evaluation = run_eval
+        mod.harness = harness
+        out = tmp_path / "preds.jsonl"
+        with patch.dict(sys.modules, {
+            "swebench": mod, "swebench.harness": harness,
+        }):
+            run_swebench(
+                endpoint="http://myhost:9090",
+                dataset="custom/dataset",
+                output_path=str(out),
+                max_workers=8,
+            )
+        kw = run_eval.call_args[1]
+        assert kw["endpoint"] == "http://myhost:9090"
+        assert kw["dataset"] == "custom/dataset"
+        assert kw["output_path"] == str(out)
+        assert kw["max_workers"] == 8
+
+
+# ── Aider tests ───────────────────────────────────────────────
+
+
+RESULTS_KEYS = AIDER_RESULTS_KEYS
 
 
 def _fake_results(total: int = 10, passed_1: int = 7, passed_2: int = 8) -> list[dict]:
