@@ -1,0 +1,81 @@
+name: Bench — TAU & Aider
+
+on:
+  workflow_dispatch:
+    inputs:
+      benchmark:
+        description: Benchmark to run
+        required: true
+        type: choice
+        options:
+          - tau
+          - aider
+      model:
+        description: Upstream model (e.g. claude-sonnet-4-20250514)
+        required: true
+        type: string
+      domain:
+        description: TAU domain (ignored for aider)
+        required: false
+        default: retail
+        type: choice
+        options:
+          - retail
+          - airline
+      dry_run:
+        description: Dry run (skip actual eval)
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+concurrency:
+  group: bench-${{ github.event.inputs.benchmark }}
+  cancel-in-progress: true
+
+jobs:
+  evaluate:
+    name: ${{ inputs.benchmark }} / ${{ inputs.model }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      FIT_BENCH_PORT: "8781"
+      FIT_BENCH_UPSTREAM: ${{ inputs.model }}
+      FIT_API_KEY: ${{ secrets.FIT_API_KEY }}
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      BENCH: ${{ inputs.benchmark }}
+      DOMAIN: ${{ inputs.domain }}
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+
+      - name: Install deps
+        run: make install:py && make bench-setup
+
+      - name: Run evaluation
+        if: ${{ !inputs.dry_run }}
+        run: |
+          if [ "$BENCH" = "tau" ]; then
+            scripts/submit-tau.sh "$DOMAIN"
+          else
+            scripts/submit-aider.sh
+          fi
+
+      - name: Dry run
+        if: ${{ inputs.dry_run }}
+        run: echo "Dry run — skipping evaluation."
+
+      - name: Upload results
+        if: ${{ !inputs.dry_run }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: bench-${{ inputs.benchmark }}-${{ inputs.model }}
+          path: results/
+          retention-days: 30
