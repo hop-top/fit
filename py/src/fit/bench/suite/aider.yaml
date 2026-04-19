@@ -1,0 +1,17 @@
+name: aider-polyglot
+description: "Aider polyglot benchmark — fit-steered vs baseline"
+version: 1
+task:
+  prompt: "Solve coding exercises via edit-based interaction"
+  input:
+    model: "{{input.model}}"
+candidates:
+  - name: baseline
+    adapter: cli
+    cmd: "fit bench run-aider --endpoint $LLM_ENDPOINT"
+  - name: fit-steered
+    adapter: cli
+    cmd: "fit bench run-aider --endpoint http://localhost:${FIT_BENCH_PORT:-8781}"
+metrics: [pass_rate_1, pass_rate_2, total, correct_edit_format_pct]
+scorer:
+  strategy: raw

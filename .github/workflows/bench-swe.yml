@@ -1,0 +1,57 @@
+name: SWE-bench Submission
+
+on:
+  workflow_dispatch:
+    inputs:
+      model:
+        description: Upstream model
+        default: anthropic
+        type: string
+      advisor_path:
+        description: Path to advisor config
+        default: ./advisor.yaml
+        type: string
+      dry_run:
+        description: Skip final submission
+        default: true
+        type: boolean
+
+permissions:
+  contents: read
+
+jobs:
+  swe-bench:
+    name: SWE-bench Verified
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+
+      - name: Install deps
+        run: make bench-setup && make install:py
+
+      - name: Run evaluation
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          FIT_BENCH_UPSTREAM: ${{ inputs.model }}
+          FIT_ADVISOR: ${{ inputs.advisor_path }}
+          DRY_RUN: ${{ inputs.dry_run }}
+        run: |
+          DRY=""
+          if [ "$DRY_RUN" = "true" ]; then DRY="--dry-run"; fi
+          ./scripts/submit-swe.sh $DRY
+
+      - name: Upload predictions
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: swe-bench-predictions
+          path: predictions.jsonl
+          if-no-files-found: ignore
