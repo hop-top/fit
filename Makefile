@@ -11,7 +11,8 @@ PHP_DIR  := php
         test-e2e-smoke test-e2e-full test-e2e-gpu \
         test-workflow \
         lint\:go lint\:ts lint\:py lint\:rs lint\:php \
-        format typecheck links setup parity
+        format typecheck links setup parity \
+        bench-setup
 
 # --- Aggregates ---
 
@@ -135,6 +136,17 @@ links:
 
 setup: install
 	@if [ -d .githooks ]; then git config core.hooksPath .githooks; fi
+
+# --- Bench Setup ---
+
+bench-setup:
+	@echo "Setting up benchmark environment..."
+	@docker info > /dev/null 2>&1 || (echo "ERROR: Docker not running" && exit 1)
+	cd $(PY_DIR) && pip install swebench --quiet 2>/dev/null || true
+	@test -d vendor/tau2-bench && cd vendor/tau2-bench && uv pip install -e . --quiet || true
+	@test -d vendor/polyglot-benchmark || git clone --depth 1 https://github.com/Aider-AI/polyglot-benchmark.git vendor/polyglot-benchmark 2>/dev/null || true
+	pip install aider-chat --quiet 2>/dev/null || true
+	@echo "Benchmark setup complete."
 
 # --- Parity ---
 
