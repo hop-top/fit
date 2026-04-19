@@ -1,0 +1,18 @@
+name: swe-bench-verified
+description: "SWE-bench Verified — fit-steered vs baseline"
+version: 1
+task:
+  prompt: "Resolve GitHub issue from problem statement"
+  input:
+    dataset: princeton-nlp/SWE-bench_Verified
+    model: "{{input.model}}"
+candidates:
+  - name: baseline
+    adapter: cli
+    cmd: "fit bench run-swe --endpoint $LLM_ENDPOINT --dataset {{input.dataset}}"
+  - name: fit-steered
+    adapter: cli
+    cmd: "fit bench run-swe --endpoint http://localhost:${FIT_BENCH_PORT:-8781} --dataset {{input.dataset}}"
+metrics: [resolved, total, resolution_pct]
+scorer:
+  strategy: raw
