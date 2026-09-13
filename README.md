@@ -5,6 +5,8 @@
 Train small advisor models to steer black-box LLMs without
 fine-tuning.
 
+> **Status:** Active development. Usable today, with some rough edges as features evolve.
+
 ## What
 
 fit provides two things:
